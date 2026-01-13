@@ -1,3 +1,4 @@
+from __future__ import annotations
 from player.base import Player
 from core.state import GameState
 from core.move import Move

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from core.rules import RulesEngine
 from core.state import classic_game_start
 

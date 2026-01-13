@@ -1,7 +1,8 @@
+from __future__ import annotations
 from core.board import Board
 
 class GameState:
-    def __init__(self, board, turn, castling, en_passant, halfmove, fullmove):
+    def __init__(self, board: Board, turn: str, castling: dict, en_passant, halfmove: int, fullmove: int):
         self.board = board
         self.turn = turn
         self.castling = castling
