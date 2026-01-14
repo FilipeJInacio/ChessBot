@@ -17,7 +17,7 @@ class Pawn(Piece):
 
     def possible_moves_pawn_white(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
-        x, y = position
+        y, x = position
         direction = 1
         start_rank = 1
         promotion_rank = 7
@@ -57,7 +57,7 @@ class Pawn(Piece):
     
     def possible_moves_pawn_black(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
-        x, y = position
+        y, x = position
         direction = -1
         start_rank = 6
         promotion_rank = 0
@@ -101,7 +101,7 @@ class Knight(Piece):
 
     def possible_moves_knight(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
-        x, y = position
+        y, x = position
         knight_moves = [
             (2, 1), (1, 2), (-1, 2), (-2, 1),
             (-2, -1), (-1, -2), (1, -2), (2, -1)
@@ -123,7 +123,7 @@ class Bishop(Piece):
 
     def possible_moves_bishop(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
-        x, y = position
+        y, x = position
         directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
 
         for dx, dy in directions:
@@ -148,7 +148,7 @@ class Rook(Piece):
     
     def possible_moves_rook(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
-        x, y = position
+        y, x = position
         directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
         for dx, dy in directions:
@@ -173,7 +173,7 @@ class Queen(Piece):
 
     def possible_moves_queen(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
-        x, y = position
+        y, x = position
         directions = [
             (1, 0), (-1, 0), (0, 1), (0, -1),
             (1, 1), (1, -1), (-1, 1), (-1, -1)
@@ -201,7 +201,7 @@ class King(Piece):
 
     def possible_moves_king(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
-        x, y = position
+        y, x = position
         king_moves = [
             (1, 0), (-1, 0), (0, 1), (0, -1),
             (1, 1), (1, -1), (-1, 1), (-1, -1)

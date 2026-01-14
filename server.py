@@ -1,3 +1,4 @@
+import time
 import zmq
 import json
 
@@ -7,12 +8,17 @@ from core.move import Move
 class Server:
     def __init__(self):
         self.game = Game()
-
-        self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.ROUTER)
-        self.socket.bind("tcp://127.0.0.1:5558")
-        self.players = {} # identity → color
         self.turn_counter = 0
+
+        # UI publisher
+        self.context = zmq.Context()
+        self.ui_socket = self.context.socket(zmq.PUB)
+        self.ui_socket.bind("tcp://127.0.0.1:5555")
+
+        self.socket = self.context.socket(zmq.REP)
+        self.socket.bind("tcp://127.0.0.1:5556")
+        self.players = {} # identity → color
+        
     
 
     def register_players(self):
@@ -78,6 +84,7 @@ class Server:
                 print("Checkmate")
                 break
 
+            time.sleep(1)
 
 if __name__ == "__main__":
     server = Server()

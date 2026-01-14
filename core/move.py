@@ -17,7 +17,14 @@ class Move:
 
     @staticmethod
     def from_dict(d):
-        return Move(d["from"], d["to"], d["promotion"], d["en_passant"], d["castling"])
+        return Move(tuple(d["from"]), tuple(d["to"]), d["promotion"], d["en_passant"], d["castling"])
     
     def __repr__(self):
         return f"Move({self.from_sq} -> {self.to_sq}, promotion={self.promotion}, en_passant={self.en_passant}, castling={self.castling})"
+    
+    def __eq__(self, other):
+        return (self.from_sq == other.from_sq and
+                self.to_sq == other.to_sq and
+                self.promotion == other.promotion and
+                self.en_passant == other.en_passant and
+                self.castling == other.castling)
