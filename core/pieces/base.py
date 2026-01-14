@@ -15,3 +15,8 @@ class Piece:
     
     def __repr__(self):
         return f"{self.color[0]}{self.id}"
+    
+    def __eq__(self, other):
+        if not isinstance(other, Piece):
+            return False
+        return self.id == other.id and self.color == other.color

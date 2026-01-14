@@ -20,6 +20,13 @@ class GameState:
     def get_piece_at(self, position: tuple[int, int]) -> Piece:
         return self.board.get_piece_at(position) 
     
+    def get_piece(self, piece: Piece) -> tuple[int, int] | None: # Doesn't work for multiple identical pieces
+        for r in range(8):
+            for c in range(8):
+                if self.board.get_piece_at((r, c)) == piece:
+                    return (r, c)
+        return None
+    
     def set_piece_at(self, position: tuple[int, int], piece: Piece):
         self.board.set_piece_at(position, piece)
 

@@ -20,7 +20,7 @@ class Server:
         self.running = True # For shutdown
         self.pub_port = 5556 # For state updates
         self.router_port = 5558 # For move requests
-        self.fps = 1 # UI update rate
+        self.fps = 15 # UI update rate
 
         # Threads
         self.pub_thread = threading.Thread(target=self._publisher, daemon=True)
@@ -45,7 +45,9 @@ class Server:
             while self.running:
                 with self.state_lock:
                     message = self.game.state.to_dict()
-                pub.send_json(message)
+                    message2 = self.game.last_move.to_dict() if self.game.last_move else None
+                    message3 = self.game.is_in_check
+                pub.send_json({"state": message, "last_move": message2, "is_in_check": message3})
                 time.sleep(period)
         finally:
             pub.close()
@@ -105,6 +107,8 @@ class Server:
                     with self.state_lock:
                         if move in legal_moves:
                             self.game.state = self.game.rules.apply_move(self.game.state, move)
+                            self.game.last_move = move
+                            self.game.history.append(move)
                         else:
                             raise RuntimeError("Illegal move received")
                     
@@ -116,20 +120,12 @@ class Server:
         for identity in self.players.keys():
             try:
                 socket.send_multipart([identity,b"",json.dumps({"type":"close"}).encode()])
-                print(f"Sent close signal to player {identity}, color {self.players[identity]}")
             except zmq.Again:
                 pass
 
 
         socket.close()
         return
-
-
-
-
-
-
-
 
     def start(self):
         print("Starting server...")
@@ -146,52 +142,7 @@ class Server:
             self.context.term()
             print("Server terminated")
 
-    def send_state(self, identity, legal_moves):
-        payload = {
-            "type": "state",
-            "state": self.game.state.to_dict(),
-            "legal_moves": [m.to_dict() for m in legal_moves]
-        }
 
-        self.socket.send_multipart([identity, b"", json.dumps(payload).encode("utf-8")])
-
-    def receive_move(self, current_identity):
-        while True:
-            identity, _, msg = self.socket.recv_multipart()
-            data = json.loads(msg.decode("utf-8"))
-            if identity == current_identity and data["type"] == "move":
-                return data
-
-    def run(self):
-        print("Waiting for players...")
-        self.register_players()
-        print("Players connected.")
-
-        while running:
-            print(f"Turn {self.turn_counter}: {self.game.state.turn}")
-            self.turn_counter += 1
-
-            # NOT WORKING
-            legal_moves = self.game.rules.legal_moves(self.game.state)
-
-            # find current player identity
-            current_identity = next(i for i, c in self.players.items() if c == self.game.state.turn)
-
-            self.send_state(current_identity, legal_moves)
-
-            data = self.receive_move(current_identity)
-            move = Move.from_dict(data["move"])
-            print(f"Received move: {move}")
-            if move not in legal_moves:
-                raise RuntimeError("Illegal move")
-
-            self.game.state = self.game.rules.apply_move(self.game.state, move)
-
-            if self.game.rules.is_checkmate(self.game.state):
-                print("Checkmate")
-                break
-
-            time.sleep(1)
 
 if __name__ == "__main__":
     server = Server()

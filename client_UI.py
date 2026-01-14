@@ -3,6 +3,7 @@ import zmq
 import time
 import signal
 from core.state import GameState
+from core.move import Move
 from render.board_image import BoardRenderer
 
 class Client:
@@ -41,9 +42,10 @@ class Client:
                         self.running = False
                 try:
                     msg = self.sub.recv_json()
-                    state = GameState.from_dict(msg)
-                    print(state)
-                    self.render.render(state)
+                    state = GameState.from_dict(msg["state"])
+                    last_move = Move.from_dict(msg["last_move"]) if msg["last_move"] else None
+                    is_in_check = msg.get("is_in_check")
+                    self.render.render(state, last_move, is_in_check)
                     clock.tick(self.render.MAX_FPS)
                     p.display.flip()
                     last_msg_time = time.time()
