@@ -1,41 +1,118 @@
 import time
 import zmq
 import json
-
+import time
+import threading
+import signal
 from game.game import Game
 from core.move import Move
 
+
+
 class Server:
     def __init__(self):
-        self.game = Game()
-        self.turn_counter = 0
+        self.game = Game() # Everything game-related
+        self.turn_counter = 0 # To track turns
+        self.players = {} # identity -> color mapping
 
-        # UI publisher
-        self.context = zmq.Context()
-        self.ui_socket = self.context.socket(zmq.PUB)
-        self.ui_socket.bind("tcp://127.0.0.1:5555")
+        self.context = zmq.Context.instance() # For communication of the 2 threads
+        self.state_lock = threading.Lock() # To protect shared state
+        self.running = True # For shutdown
+        self.pub_port = 5556 # For state updates
+        self.response_port = 5558 # For move requests
+        self.fps = 1 # UI update rate
 
-        self.socket = self.context.socket(zmq.REP)
-        self.socket.bind("tcp://127.0.0.1:5556")
-        self.players = {} # identity → color
-        
-    
+        # Threads
+        self.pub_thread = threading.Thread(target=self._publisher, daemon=True)
+        self.rep_thread = threading.Thread(target=self._response, daemon=True)
 
-    def register_players(self):
+        # Signal handling
+        signal.signal(signal.SIGINT, self._shutdown_signal)
+        signal.signal(signal.SIGTERM, self._shutdown_signal)
+
+    def _shutdown_signal(self, sig, frame):
+        print("Shutdown signal received")
+        self.running = False
+
+    def _publisher(self):
+        pub = self.context.socket(zmq.PUB)
+        pub.setsockopt(zmq.SNDHWM, 1000)
+        pub.bind(f"tcp://*:{self.pub_port}")
+
+        period = 1.0 / self.fps
+
+        try:
+            while self.running:
+                with self.state_lock:
+                    message = self.game.state.to_dict()
+                pub.send_json(message)
+                time.sleep(period)
+        finally:
+            pub.close()
+            print("Publisher stopped")
+
+    def _response(self):
+        response = self.context.socket(zmq.REP)
+        response.setsockopt(zmq.SNDHWM, 1000)
+        response.setsockopt(zmq.RCVHWM, 1000)
+        response.setsockopt(zmq.RCVTIMEO, 500) # Timeout to verify if still running
+        #response.setsockopt(zmq.SNDTIMEO, 500) # It is expected that clients always recv
+        response.setsockopt(zmq.LINGER, 0)
+        response.bind(f"tcp://*:{self.response_port}")
+
         while len(self.players) < 2:
-            identity, _, msg = self.socket.recv_multipart()
-            data = json.loads(msg.decode("utf-8"))
+            try:
+                identity, _, msg = response.recv_multipart()
+                data = json.loads(msg.decode("utf-8"))
 
-            if data["type"] == "join":
-                reply = {
-                    "type": "join_ack",
-                    "color": "white" if "white" not in self.players.values() else "black"
-                }
+                if data["type"] == "join":
+                    reply = {
+                        "type": "join_ack",
+                        "color": "white" if "white" not in self.players.values() else "black"
+                    }
 
-                self.players[identity] = reply["color"]
+                    self.players[identity] = reply["color"]
 
-                self.socket.send_multipart([identity, b"", json.dumps(reply).encode("utf-8")])
+                    response.send_multipart([identity, b"", json.dumps(reply).encode("utf-8")])
+            except zmq.Again:
+                if not self.running:
+                    response.close()
+                    print("Response socket stopped")
+                    break
 
+
+        try:
+            while self.running:
+                identity, _, msg = response.recv_multipart()
+                request = json.loads(msg.decode("utf-8"))
+
+                # is it a recognized identity?
+                if identity not in self.players:
+                    reply = {"status": "error", "message": "unrecognized identity"}
+                    response.send_multipart([identity, b"", json.dumps(reply).encode("utf-8")])
+                    continue
+
+                print(request) # To do
+
+                response.send_multipart([identity, b"", json.dumps(reply).encode("utf-8")])
+        finally:
+            response.close()
+            print("Response socket stopped")
+
+    def start(self):
+        print("Starting server...")
+        self.pub_thread.start()
+        self.rep_thread.start()
+
+        try:
+            while self.running:
+                time.sleep(1)
+        finally:
+            print("Server shutting down...")
+            self.pub_thread.join()
+            self.rep_thread.join()
+            self.context.term()
+            print("Server terminated")
 
     def send_state(self, identity, legal_moves):
         payload = {
@@ -46,7 +123,6 @@ class Server:
 
         self.socket.send_multipart([identity, b"", json.dumps(payload).encode("utf-8")])
 
-
     def receive_move(self, current_identity):
         while True:
             identity, _, msg = self.socket.recv_multipart()
@@ -54,13 +130,12 @@ class Server:
             if identity == current_identity and data["type"] == "move":
                 return data
 
-
     def run(self):
         print("Waiting for players...")
         self.register_players()
         print("Players connected.")
 
-        while True:
+        while running:
             print(f"Turn {self.turn_counter}: {self.game.state.turn}")
             self.turn_counter += 1
 
@@ -88,5 +163,4 @@ class Server:
 
 if __name__ == "__main__":
     server = Server()
-    server.run()
-    print("Game over.")
+    server.start()

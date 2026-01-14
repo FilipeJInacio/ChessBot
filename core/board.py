@@ -54,4 +54,5 @@ class Board:
     
 
     def __repr__(self):
-        return str(self.grid)
+        display_grid = np.where(self.grid == None, '', self.grid)
+        return str(display_grid)

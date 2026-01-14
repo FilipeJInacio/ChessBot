@@ -19,7 +19,7 @@ class BoardRenderer(Renderer):
         self.IMAGES = {}
 
     def load_images(self):
-        pieces = ['wp', 'wR', 'wN', 'wB', 'wQ', 'wK', 'bp', 'bR', 'bN', 'bB', 'bQ', 'bK']
+        pieces = ['wP', 'wR', 'wN', 'wB', 'wQ', 'wK', 'bp', 'br', 'bn', 'bb', 'bq', 'bk']
         for piece in pieces:
             path = os.path.join('render', 'images', f'{piece}.png')
             self.IMAGES[piece] = p.transform.scale(p.image.load(path), (self.SQ_SIZE, self.SQ_SIZE))
@@ -36,7 +36,7 @@ class BoardRenderer(Renderer):
             for c in range(self.DIMENSION):
                 piece = board.get_piece_at((r, c))
                 if piece is not None:
-                    screen.blit(self.IMAGES[f'{piece}'], p.Rect(c * self.SQ_SIZE, r * self.SQ_SIZE, self.SQ_SIZE, self.SQ_SIZE))
+                    screen.blit(self.IMAGES[piece.__repr__()], p.Rect(c * self.SQ_SIZE, r * self.SQ_SIZE, self.SQ_SIZE, self.SQ_SIZE))
         
 
     def render(self, state: GameState):

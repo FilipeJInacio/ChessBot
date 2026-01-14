@@ -38,7 +38,7 @@ class GameState:
         board = Board()
         for pos_str, piece_repr in state_dict["board"].items():
             row, col = map(int, pos_str.split(","))
-            color = piece_repr[0]
+            color = "white" if piece_repr[0] == "w" else "black"
             piece_type = piece_repr[1]
             if piece_type == "P" or piece_type == "p":
                 piece = Pawn(color)
