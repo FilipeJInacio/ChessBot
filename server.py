@@ -86,7 +86,7 @@ class Server:
         while self.running:
             try:
                 identity = next(i for i, c in self.players.items() if c == self.game.state.turn)
-                time.sleep(3)
+                time.sleep(1)
 
                 with self.state_lock:
                     legal_moves = self.game.rules.legal_moves(self.game.state)

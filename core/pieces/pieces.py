@@ -15,7 +15,7 @@ class Pawn(Piece):
         else:
             self.possible_moves = self.possible_moves_pawn_black
 
-    def possible_moves_pawn_white(self, position: tuple[int, int], state: GameState) -> list[Move]:
+    def possible_moves_pawn_black(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
         y, x = position
         direction = 1
@@ -23,39 +23,39 @@ class Pawn(Piece):
         promotion_rank = 7
 
        # one square forward
-        if y + direction <= 7 and state.get_piece_at((x, y + direction)) is None:
+        if y + direction <= 7 and state.get_piece_at((y + direction, x)) is None:
             if y + direction == promotion_rank:
-                for p in ['Q', 'R', 'B', 'N']:
-                    moves.append(Move(position, (x, y + direction), promotion=p))
+                for p in ['q', 'r', 'b', 'n']:
+                    moves.append(Move(position, (y + direction, x), promotion=p))
             else:
-                moves.append(Move(position, (x, y + direction)))
+                moves.append(Move(position, (y + direction, x)))
 
             # two squares forward from starting rank
-            if y == start_rank and (state.get_piece_at((x, y + 2 * direction)) is None and state.get_piece_at((x, y + direction)) is None):
-                moves.append(Move(position, (x, y + 2 * direction)))
+            if y == start_rank and (state.get_piece_at((y + 2 * direction, x)) is None and state.get_piece_at((y + direction, x)) is None):
+                moves.append(Move(position, (y + 2 * direction, x)))
 
         # captures
         for dx in (-1, 1):
             nx, ny = x + dx, y + direction
             if 0 <= nx <= 7 and 0 <= ny <= 7:
-                target = state.get_piece_at((nx, ny))
-                if target is not None and target.color == 'black':
+                target = state.get_piece_at((ny, nx))
+                if target is not None and target.color == 'white':
                     if ny == promotion_rank:
-                        for p in ['Q', 'R', 'B', 'N']:
-                            moves.append(Move(position, (nx, ny), promotion=p))
+                        for p in ['q', 'r', 'b', 'n']:
+                            moves.append(Move(position, (ny, nx), promotion=p))
                     else:
-                        moves.append(Move(position, (nx, ny)))
+                        moves.append(Move(position, (ny, nx)))
 
         # en passant
         if state.en_passant is not None:
-            ex, ey = state.en_passant
+            ey, ex = state.en_passant
             if ey == y + direction and abs(ex - x) == 1:
-                moves.append(Move(position, (ex, ey), en_passant=True))
+                moves.append(Move(position, (ey, ex), en_passant=True))
 
 
         return moves
     
-    def possible_moves_pawn_black(self, position: tuple[int, int], state: GameState) -> list[Move]:
+    def possible_moves_pawn_white(self, position: tuple[int, int], state: GameState) -> list[Move]:
         moves = []
         y, x = position
         direction = -1
@@ -63,34 +63,34 @@ class Pawn(Piece):
         promotion_rank = 0
 
         # one square forward
-        if y + direction >= 0 and state.get_piece_at((x, y + direction)) is None:
+        if y + direction >= 0 and state.get_piece_at((y + direction, x)) is None:
             if y + direction == promotion_rank:
-                for p in ['q', 'r', 'b', 'n']:
-                    moves.append(Move(position, (x, y + direction), promotion=p))
+                for p in ['Q', 'R', 'B', 'N']:
+                    moves.append(Move(position, (y + direction, x), promotion=p))
             else:
-                moves.append(Move(position, (x, y + direction)))
+                moves.append(Move(position, (y + direction, x)))
 
             # two squares forward from starting rank
-            if y == start_rank and (state.get_piece_at((x, y + 2 * direction)) is None and state.get_piece_at((x, y + direction)) is None):
-                moves.append(Move(position, (x, y + 2 * direction), en_passant=True))
+            if y == start_rank and (state.get_piece_at((y + 2 * direction, x)) is None and state.get_piece_at((y + direction, x)) is None):
+                moves.append(Move(position, (y + 2 * direction, x)))
 
         # captures
         for dx in (-1, 1):
             nx, ny = x + dx, y + direction
             if 0 <= nx <= 7 and 0 <= ny <= 7:
-                target = state.get_piece_at((nx, ny))
-                if target is not None and target.color == 'white':
+                target = state.get_piece_at((ny, nx))
+                if target is not None and target.color == 'black':
                     if ny == promotion_rank:
-                        for p in ['q', 'r', 'b', 'n']:
-                            moves.append(Move(position, (nx, ny), promotion=p))
+                        for p in ['Q', 'R', 'B', 'N']:
+                            moves.append(Move(position, (ny, nx), promotion=p))
                     else:
-                        moves.append(Move(position, (nx, ny)))
+                        moves.append(Move(position, (ny, nx)))
 
         # en passant
         if state.en_passant is not None:
-            ex, ey = state.en_passant
+            ey, ex = state.en_passant
             if ey == y + direction and abs(ex - x) == 1:
-                moves.append(Move(position, (ex, ey), en_passant=True))
+                moves.append(Move(position, (ey, ex), en_passant=True))
 
         return moves
     
@@ -110,9 +110,9 @@ class Knight(Piece):
         for dx, dy in knight_moves:
             nx, ny = x + dx, y + dy
             if 0 <= nx <= 7 and 0 <= ny <= 7:
-                target = state.get_piece_at((nx, ny))
+                target = state.get_piece_at((ny, nx))
                 if target is None or target.color != self.color:
-                    moves.append(Move(position, (nx, ny)))
+                    moves.append(Move(position, (ny, nx)))
 
         return moves
 
@@ -129,12 +129,12 @@ class Bishop(Piece):
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             while 0 <= nx <= 7 and 0 <= ny <= 7:
-                target = state.get_piece_at((nx, ny))
+                target = state.get_piece_at((ny, nx))
                 if target is None:
-                    moves.append(Move(position, (nx, ny)))
+                    moves.append(Move(position, (ny, nx)))
                 else:
                     if target.color != self.color:
-                        moves.append(Move(position, (nx, ny)))
+                        moves.append(Move(position, (ny, nx)))
                     break
                 nx += dx
                 ny += dy
@@ -154,12 +154,12 @@ class Rook(Piece):
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             while 0 <= nx <= 7 and 0 <= ny <= 7:
-                target = state.get_piece_at((nx, ny))
+                target = state.get_piece_at((ny, nx))
                 if target is None:
-                    moves.append(Move(position, (nx, ny)))
+                    moves.append(Move(position, (ny, nx)))
                 else:
                     if target.color != self.color:
-                        moves.append(Move(position, (nx, ny)))
+                        moves.append(Move(position, (ny, nx)))
                     break
                 nx += dx
                 ny += dy
@@ -182,12 +182,12 @@ class Queen(Piece):
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             while 0 <= nx <= 7 and 0 <= ny <= 7:
-                target = state.get_piece_at((nx, ny))
+                target = state.get_piece_at((ny, nx))
                 if target is None:
-                    moves.append(Move(position, (nx, ny)))
+                    moves.append(Move(position, (ny, nx)))
                 else:
                     if target.color != self.color:
-                        moves.append(Move(position, (nx, ny)))
+                        moves.append(Move(position, (ny, nx)))
                     break
                 nx += dx
                 ny += dy
@@ -210,18 +210,18 @@ class King(Piece):
         for dx, dy in king_moves:
             nx, ny = x + dx, y + dy
             if 0 <= nx <= 7 and 0 <= ny <= 7:
-                target = state.get_piece_at((nx, ny))
+                target = state.get_piece_at((ny, nx))
                 if target is None or target.color != self.color:
-                    moves.append(Move(position, (nx, ny)))
+                    moves.append(Move(position, (ny, nx)))
 
         # Castling king side
         if state.castling.get('K' if self.color == 'white' else 'k', False):
-            if state.get_piece_at((5, y)) is None and state.get_piece_at((6, y)) is None:
-                moves.append(Move(position, (6, y), castling=True)) 
+            if state.get_piece_at((y, 5)) is None and state.get_piece_at((y, 6)) is None:
+                moves.append(Move(position, (y, 6), castling=True)) 
 
         # Castling queen side
         if state.castling.get('Q' if self.color == 'white' else 'q', False):
-            if state.get_piece_at((1, y)) is None and state.get_piece_at((2, y)) is None and state.get_piece_at((3, y)) is None:
-                moves.append(Move(position, (2, y), castling=True))
+            if state.get_piece_at((y, 1)) is None and state.get_piece_at((y, 2)) is None and state.get_piece_at((y, 3)) is None:
+                moves.append(Move(position, (y, 2), castling=True))
 
         return moves

@@ -35,7 +35,7 @@ class RulesEngine:
 
         # en passant handling
         if move.en_passant:
-            new_state.set_piece_at(state.en_passant, None)
+            new_state.en_passant 
 
         # double row pawn move handling
         if isinstance(piece, Pawn):
