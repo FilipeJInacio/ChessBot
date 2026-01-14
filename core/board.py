@@ -1,6 +1,16 @@
 from __future__ import annotations
 import numpy as np
-from core.piece.pieces import Piece
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.pieces.base import Piece
+
+
+from core.pieces.pieces import Pawn, Rook, Knight, Bishop, Queen, King
+
+
+
+
 
 class Board:
     def __init__(self):
@@ -12,11 +22,11 @@ class Board:
     def set_piece_at(self, position: tuple[int, int], piece: Piece):
         self.grid[position] = piece
 
-    def piece_at_classical_setup(self): # To REDO
-        self.grid[0] = ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r']
-        self.grid[1] = ['p']*8
-        self.grid[6] = ['P']*8
-        self.grid[7] = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+    def piece_at_classical_setup(self):
+        self.grid[0, :] = np.array([Rook("black"), Knight("black"), Bishop("black"), Queen("black"), King("black"), Bishop("black"), Knight("black"), Rook("black")])
+        self.grid[1, :] = np.array([Pawn("black"), Pawn("black"), Pawn("black"), Pawn("black"), Pawn("black"), Pawn("black"), Pawn("black"), Pawn("black")])
+        self.grid[6, :] = np.array([Pawn("white"), Pawn("white"), Pawn("white"), Pawn("white"), Pawn("white"), Pawn("white"), Pawn("white"), Pawn("white")])
+        self.grid[7, :] = np.array([Rook("white"), Knight("white"), Bishop("white"), Queen("white"), King("white"), Bishop("white"), Knight("white"), Rook("white")])
 
     def board_from_fen(self, fen: str):
         ...
@@ -24,3 +34,24 @@ class Board:
     def move_piece(self, move):
         ...
 
+    def to_dict(self):
+        board_dict = {}
+        for row in range(8):
+            for col in range(8):
+                piece = self.get_piece_at((row, col))
+                if piece is not None:
+                    board_dict[f"{row},{col}"] = repr(piece)
+        return board_dict
+
+    # @staticmethod
+    # def from_dict(board_dict: dict):
+    #     board = Board()
+    #     for pos_str, piece_repr in board_dict.items():
+    #         row, col = map(int, pos_str.split(","))
+    #         piece = eval(piece_repr)  # Caution: using eval; ensure input is trusted
+    #         board.set_piece_at((row, col), piece)
+    #     return board
+    
+
+    def __repr__(self):
+        return str(self.grid)
