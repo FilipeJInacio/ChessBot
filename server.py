@@ -46,8 +46,7 @@ class Server:
                 with self.state_lock:
                     message = self.game.state.to_dict()
                     message2 = self.game.last_move.to_dict() if self.game.last_move else None
-                    message3 = self.game.is_in_check
-                pub.send_json({"state": message, "last_move": message2, "is_in_check": message3})
+                pub.send_json({"state": message, "last_move": message2})
                 time.sleep(period)
         finally:
             pub.close()

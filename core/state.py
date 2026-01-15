@@ -9,13 +9,14 @@ if TYPE_CHECKING:
     from core.pieces.base import Piece
 
 class GameState:
-    def __init__(self, board: Board, turn: str, castling: dict, en_passant: tuple[int, int] | None, halfmove: int, fullmove: int):
+    def __init__(self, board: Board, turn: str, castling: dict, en_passant: tuple[int, int] | None, halfmove: int, fullmove: int, is_in_check: bool):
         self.board = board
         self.turn = turn
         self.castling = castling
         self.en_passant = en_passant
         self.halfmove = halfmove
         self.fullmove = fullmove
+        self.is_in_check = is_in_check
 
     def get_piece_at(self, position: tuple[int, int]) -> Piece:
         return self.board.get_piece_at(position) 
@@ -38,6 +39,7 @@ class GameState:
             "en_passant": self.en_passant,
             "halfmove": self.halfmove,
             "fullmove": self.fullmove,
+            "is_in_check": self.is_in_check,
         }
     
     @staticmethod
@@ -63,7 +65,7 @@ class GameState:
                 continue
             board.set_piece_at((row, col), piece)
         
-        return GameState(board,state_dict["turn"],state_dict["castling"],tuple(state_dict["en_passant"]) if state_dict["en_passant"] is not None else None,state_dict["halfmove"],state_dict["fullmove"])
+        return GameState(board,state_dict["turn"],state_dict["castling"],tuple(state_dict["en_passant"]) if state_dict["en_passant"] is not None else None,state_dict["halfmove"],state_dict["fullmove"],state_dict["is_in_check"])
 
     def copy(self):
         return GameState(
@@ -72,7 +74,8 @@ class GameState:
             self.castling.copy(),
             self.en_passant,
             self.halfmove,
-            self.fullmove
+            self.fullmove,
+            self.is_in_check
         )
     
     def __repr__(self):
@@ -81,4 +84,4 @@ class GameState:
 def classic_game_start() -> GameState:
     board = Board()
     board.piece_at_classical_setup()
-    return GameState(board, "white", {"K": True, "Q": True, "k": True, "q": True}, None, 0, 1)
+    return GameState(board, "white", {"K": True, "Q": True, "k": True, "q": True}, None, 0, 1, False)

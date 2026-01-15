@@ -53,7 +53,6 @@ class BoardRenderer(Renderer):
             self.screen.blit(s, (fr[1] * self.SQ_SIZE, fr[0] * self.SQ_SIZE))
             self.screen.blit(s, (to[1] * self.SQ_SIZE, to[0] * self.SQ_SIZE))
 
-        print(f"Rendering board. is_in_check={is_in_check}")
         if is_in_check:
             # highlight king in check
             king_pos = state.get_piece(King(state.turn))

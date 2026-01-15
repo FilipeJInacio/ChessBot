@@ -10,21 +10,39 @@ if TYPE_CHECKING:
 
 class RulesEngine:
     def legal_moves(self, state: GameState) -> list[Move]:
-        king_pos = state.get_piece(King(state.turn))
-        
-        if state.is_in_check:
-            print(f"{state.turn} is in check")
-
-
-
         moves = []
         for row in range(8):
             for col in range(8):
                 piece = state.get_piece_at((row, col))
-                if piece is not None:
-                    if piece.color == state.turn:
-                        moves.extend(piece.possible_moves((row, col), state))
-        return moves
+                if piece and piece.color == state.turn:
+                    moves.extend(piece.possible_moves((row, col), state))
+
+        # Filter illegal moves (king in check)
+        legal = []
+        for m in moves:
+            if not self.leaves_king_in_check(state, m):
+                legal.append(m)
+        return legal
+
+    def leaves_king_in_check(self, state: GameState, move: Move) -> bool:
+        state_copy = state.copy()
+        current_turn = state_copy.turn
+        self.apply_move(state_copy, move) # is now in the adversary's turn
+
+        return self.square_attacked(state_copy, state_copy.get_piece(King(current_turn)))
+    
+    def square_attacked(self, state: GameState, pos: tuple[int, int]) -> bool:
+        enemy_color = state.turn
+
+        for rr in range(8):
+            for cc in range(8):
+                piece = state.get_piece_at((rr, cc))
+                if piece and piece.color == enemy_color:
+                    for m in piece.possible_moves((rr, cc), state):
+                        if m.to_sq == pos:
+                            return True
+
+        return False
 
     def is_in_check(self, state: GameState, king_pos: tuple[int, int]) -> bool:
         opponent_color = 'black' if state.turn == 'white' else 'white'
@@ -85,6 +103,6 @@ class RulesEngine:
 
         # is the adversary in check now?
         king_pos = new_state.get_piece(King(new_state.turn))
-        game.is_in_check = self.is_in_check(new_state, king_pos)
+        new_state.is_in_check = self.is_in_check(new_state, king_pos)
 
         return new_state

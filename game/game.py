@@ -8,8 +8,7 @@ class Game:
         self.rules = RulesEngine()
         self.last_move = None
         self.history = []
-        self.is_in_check = False # WHAT DO I DO WITH THIS?
 
-
+    
 
 
