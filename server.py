@@ -4,14 +4,13 @@ import json
 import time
 import threading
 import signal
-from game.game import Game
-from core.move import Move
+from game import ChessGame
 
 
 
 class Server:
     def __init__(self):
-        self.game = Game() # Everything game-related
+        self.game = ChessGame() # Everything game-related
         self.turn_counter = 0 # To track turns
         self.players = {} # identity -> color mapping
 
@@ -44,9 +43,8 @@ class Server:
         try:
             while self.running:
                 with self.state_lock:
-                    message = self.game.state.to_dict()
-                    message2 = self.game.last_move.to_dict() if self.game.last_move else None
-                pub.send_json({"state": message, "last_move": message2})
+                    message = self.game.get_board_fen()
+                pub.send_json({"state": message})
                 time.sleep(period)
         finally:
             pub.close()
@@ -86,28 +84,26 @@ class Server:
         # Active player messaging
         while self.running:
             try:
-                identity = next(i for i, c in self.players.items() if c == self.game.state.turn)
+                # use turn_counter to determine whose turn it is
+                identity = list(self.players.keys())[self.turn_counter % 2]
+                self.turn_counter += 1
+
                 time.sleep(1)
 
                 with self.state_lock:
-                    legal_moves = self.game.rules.legal_moves(self.game.state)
-                moves_list = [m.to_dict() for m in legal_moves]
-                reply = {"type": "moves", "moves": moves_list}
+                    legal_moves = self.game.get_possible_moves()
+                reply = {"type": "moves", "moves": legal_moves}
                 socket.send_multipart([identity,b"",json.dumps(reply).encode()])
                 
-
                 identity_recv, _, payload = socket.recv_multipart()
                 if identity_recv != identity:
                     raise RuntimeError("Received message from unexpected identity")
                 msg = json.loads(payload.decode())
                 if msg["type"] == "moves":
-                    move_dict = msg["moves"][0]
-                    move = Move.from_dict(move_dict)
+                    move_uci = msg["moves"][0]
                     with self.state_lock:
-                        if move in legal_moves:
-                            self.game.state = self.game.rules.apply_move(self.game.state, move)
-                            self.game.last_move = move
-                            self.game.history.append(move)
+                        if move_uci in legal_moves:
+                            self.game.make_move(move_uci)
                         else:
                             raise RuntimeError("Illegal move received")
                     

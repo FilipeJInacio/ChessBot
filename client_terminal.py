@@ -1,7 +1,6 @@
 import zmq
 import time
 import signal
-from core.state import GameState
 
 class Client:
     def __init__(self):

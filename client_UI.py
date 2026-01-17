@@ -2,12 +2,13 @@ import pygame as p
 import zmq
 import time
 import signal
-from core.state import GameState
-from core.move import Move
-from render.board_image import BoardRenderer
+from game import ChessGame
+from board_image import BoardRenderer
 
 class Client:
     def __init__(self):
+        self.chess_game = ChessGame()
+
         self.context = zmq.Context()
         self.sub = self.context.socket(zmq.SUB)
         self.sub.connect("tcp://localhost:5556")
@@ -42,9 +43,8 @@ class Client:
                         self.running = False
                 try:
                     msg = self.sub.recv_json()
-                    state = GameState.from_dict(msg["state"])
-                    last_move = Move.from_dict(msg["last_move"]) if msg["last_move"] else None
-                    self.render.render(state, last_move, state.is_in_check)
+                    self.chess_game.from_fen(msg["state"])
+                    self.render.render(self.chess_game, self.chess_game.board.peek() if self.chess_game.board.move_stack else None, self.chess_game.board.is_check())
                     clock.tick(self.render.MAX_FPS)
                     p.display.flip()
                     last_msg_time = time.time()

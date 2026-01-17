@@ -3,10 +3,12 @@ import random
 import uuid
 import json
 import signal
-from core.state import GameState
+from game import ChessGame
 
 class Client:
     def __init__(self):
+        self.chess_game = ChessGame()
+
         self.context = zmq.Context()
         self.req = self.context.socket(zmq.REQ)
         client_id = uuid.uuid4().bytes
