@@ -55,6 +55,96 @@ class ChessGame:
         for piece_type in piece_values:
             eval_score += len(self.board.pieces(piece_type, chess.WHITE)) * piece_values[piece_type]
             eval_score -= len(self.board.pieces(piece_type, chess.BLACK)) * piece_values[piece_type]
+
+        # Positional evaluation (very basic)
+        knight_positional_bonus = [
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 2, 4, 5, 5, 4, 2, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 1, 2, 2, 2, 2, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        ]
+
+        bishop_positional_bonus = [
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 2, 4, 5, 5, 4, 2, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 1, 2, 2, 2, 2, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        ]
+
+        rook_positional_bonus = [
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 2, 4, 5, 5, 4, 2, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 1, 2, 2, 2, 2, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        ]
+
+        pawn_positional_bonus = [
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 2, 4, 5, 5, 4, 2, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 1, 2, 2, 2, 2, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        ]
+
+        queen_positional_bonus = [
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 2, 4, 5, 5, 4, 2, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 1, 2, 2, 2, 2, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        ]
+
+        king_positional_bonus = [
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 2, 4, 5, 5, 4, 2, 0,
+            0, 2, 3, 4, 4, 3, 2, 0,
+            0, 1, 2, 2, 2, 2, 1, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        ]
+
+        for square in chess.SQUARES:
+            piece = self.board.piece_at(square)
+            if piece and piece.piece_type == chess.KNIGHT:
+                if piece.color == chess.WHITE:
+                    eval_score += knight_positional_bonus[square]
+                else:
+                    eval_score -= knight_positional_bonus[chess.square_mirror(square)]
+
+
+        # degrees of freedom bonus
+        for square in chess.SQUARES:
+            piece = self.board.piece_at(square)
+            if piece:
+                moves = list(self.board.legal_moves)
+                freedom = sum(1 for move in moves if move.from_square == square)
+                if piece.color == chess.WHITE:
+                    eval_score += 0.1 * freedom
+                else:
+                    eval_score -= 0.1 * freedom
+        
+
+
         return eval_score
 
 
