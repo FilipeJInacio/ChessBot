@@ -85,7 +85,7 @@ class UI_pygame:
         p.init()
         self.render.screen = p.display.set_mode((self.render.WIDTH, self.render.HEIGHT))
         p.display.set_caption('Chess')
-        clock = p.time.Clock()
+        self.clock = p.time.Clock()
         self.render.screen.fill(p.Color("white"))
         self.render.load_images()
 
@@ -97,13 +97,15 @@ class UI_pygame:
                 if e.type == p.QUIT:
                     self.running = False
             try:
-                msg = self.sub.recv()
+                msg = self.sub.recv_json()
                 if msg != last_msg:
-                    self.game.from_fen(msg.decode("utf-8"))
+                    with self.state_lock:
+                        self.game.from_fen(msg["fen"])
+                        self.render.render(self.game, chess.Move.from_uci(msg["last_move"]) if msg["last_move"] else None)
+                        self.clock.tick(self.render.MAX_FPS)
+                        p.display.flip()
+
                     last_msg = msg
-                self.render.render(self.game, last_move=None)
-                clock.tick(self.render.MAX_FPS)
-                p.display.flip()
 
             except zmq.Again:
                 self.running = False

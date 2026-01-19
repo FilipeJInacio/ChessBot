@@ -41,8 +41,8 @@ class Server:
         try:
             while self.running:
                 with self.state_lock:
-                    message = self.game.get_board_fen()
-                pub.send(message.encode("utf-8"))
+                    message = {"fen": self.game.get_board_fen(), "last_move": self.game.get_last_move().uci() if self.game.get_last_move() else None}
+                pub.send_json(message)
                 time.sleep(period)
         finally:
             pub.close()
