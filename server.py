@@ -14,7 +14,6 @@ class Server:
         self.players = {} # color mapping -> identity
 
         self.context = zmq.Context.instance() # For communication of the 2 threads
-        self.state_lock = threading.Lock() # To protect shared state
         self.running = True # For shutdown
         self.pub_port = 5556 # For state updates
         self.router_port = 5557 # For move requests
@@ -23,6 +22,7 @@ class Server:
         # Threads
         self.pub_thread = threading.Thread(target=self._publisher, daemon=True)
         self.router_thread = threading.Thread(target=self._router, daemon=True)
+        self.state_lock = threading.Lock() # To protect shared state
 
         # Signal handling
         signal.signal(signal.SIGINT, self._shutdown_signal)
