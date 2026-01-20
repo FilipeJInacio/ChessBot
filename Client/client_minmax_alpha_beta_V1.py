@@ -1,6 +1,7 @@
 from Client.client import Client
 import chess
 
+# bugged
 # ~5s per move: depth 3
 
 class Client_minmax_alpha_beta(Client):

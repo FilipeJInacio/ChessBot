@@ -116,6 +116,7 @@ class Client_V1_1(Client):
     def position_evaluation(self):
         # TODO
         # invert is wrong, black king positional bonus should be mirrored
+        # distance to enemy king to checkmate faster
         # Use last move to optimize evaluation (only compute changes)
         # Piece–square tables
         # Mobility (already partly done)
@@ -145,12 +146,12 @@ class Client_V1_1(Client):
 
             # My pieces
             for square in board.pieces(piece_type, my_color):
-                idx = square if my_color == chess.WHITE else self.flip_board(square)
+                idx = self.flip_board(square) if my_color == chess.WHITE else square
                 eval_score += value + table[idx]
 
             # Enemy pieces
             for square in board.pieces(piece_type, enemy_color):
-                idx = square if enemy_color == chess.WHITE else self.flip_board(square)
+                idx = self.flip_board(square) if enemy_color == chess.WHITE else square
                 eval_score -= value + table[idx]
 
 

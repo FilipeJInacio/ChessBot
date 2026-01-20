@@ -1,6 +1,8 @@
 from Client.client import Client
 import chess
 
+# bugged
+
 class Client_minmax(Client):
     def __init__(self):
         super().__init__()
