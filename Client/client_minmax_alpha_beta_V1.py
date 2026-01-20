@@ -1,6 +1,8 @@
 from Client.client import Client
 import chess
 
+# ~5s per move: depth 3
+
 class Client_minmax_alpha_beta(Client):
     def __init__(self):
         super().__init__()

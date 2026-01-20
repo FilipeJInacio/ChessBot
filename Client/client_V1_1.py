@@ -1,8 +1,8 @@
-from shutil import move
+import time
 from Client.client import Client
 import chess
 
-class Client_minmax_alpha_beta(Client):
+class Client_V1_1(Client):
     def __init__(self):
         super().__init__()
                 # Material evaluation
@@ -19,15 +19,13 @@ class Client_minmax_alpha_beta(Client):
         self.knight_positional_bonus = [
             -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5,
             -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
-            -0.3, 0.00, 0.15, 0.25, 0.25, 0.15, 0.00, -0.3,
-            -0.3, 0.05, 0.25, 0.35, 0.35, 0.25, 0.05, -0.3,
-            -0.3, 0.05, 0.25, 0.35, 0.35, 0.25, 0.05, -0.3,
-            -0.3, 0.00, 0.15, 0.25, 0.25, 0.15, 0.00, -0.3,
+            -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
+            -0.3, 0.05, 0.20, 0.25, 0.25, 0.20, 0.05, -0.3,
+            -0.3, 0.05, 0.20, 0.25, 0.25, 0.20, 0.05, -0.3,
+            -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
             -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
             -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5
         ]
-
-        self.knight_value_per_mobility = 0.04
 
         self.bishop_positional_bonus = [
             -0.30, -0.20, -0.20, -0.20, -0.20, -0.20, -0.20, -0.30,
@@ -40,8 +38,6 @@ class Client_minmax_alpha_beta(Client):
             -0.30, -0.20, -0.20, -0.20, -0.20, -0.20, -0.20, -0.30
         ]
 
-        self.bishop_value_per_mobility = 0.05
-
         self.rook_positional_bonus = [
              0.00,   0.00,   0.05,   0.10,   0.10,   0.05,   0.00,   0.00,
              0.20,   0.25,   0.30,   0.35,   0.35,   0.30,   0.25,   0.20,
@@ -50,10 +46,8 @@ class Client_minmax_alpha_beta(Client):
             -0.05,   0.00,   0.05,   0.10,   0.10,   0.05,   0.00,  -0.05,
             -0.10,  -0.05,   0.00,   0.05,   0.05,   0.00,  -0.05,  -0.10,
             -0.10,  -0.05,   0.00,   0.05,   0.05,   0.00,  -0.05,  -0.10,
-             0.00,   0.00,   0.05,   0.10,   0.10,   0.05,   0.00,   0.00
+             0.00,   0.00,   0.05,   0.10,   0.10,   0.05,   0.00,   0.00,
         ]
-
-        self.rook_value_per_mobility = 0.03
 
         self.pawn_positional_bonus = [
             0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,
@@ -64,7 +58,7 @@ class Client_minmax_alpha_beta(Client):
             0.00,  0.00,  0.05,  0.15,  0.15,  0.05,  0.00,  0.00,
             0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,
             0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00,  0.00
-        ] * 2
+        ]
 
         self.queen_positional_bonus = [
             -0.20,  -0.10,  -0.10,  -0.05,  -0.05,  -0.10,  -0.10,  -0.20,
@@ -77,8 +71,6 @@ class Client_minmax_alpha_beta(Client):
             -0.20,  -0.10,  -0.10,  -0.05,  -0.05,  -0.10,  -0.10,  -0.20
         ]
 
-        self.queen_value_per_mobility = 0.02
-
         self.king_positional_bonus = [
             -0.60,  -0.70,  -0.70,  -0.80,  -0.80,  -0.70,  -0.70,  -0.60,
             -0.60,  -0.70,  -0.70,  -0.80,  -0.80,  -0.70,  -0.70,  -0.60,
@@ -90,7 +82,14 @@ class Client_minmax_alpha_beta(Client):
              0.20,   0.30,   0.10,  -0.10,  -0.10,   0.10,   0.30,   0.20
         ]
 
-        self.king_value_per_mobility = 0.01
+        self.psqt = {
+            chess.PAWN: self.pawn_positional_bonus,
+            chess.KNIGHT: self.knight_positional_bonus,
+            chess.BISHOP: self.bishop_positional_bonus,
+            chess.ROOK: self.rook_positional_bonus,
+            chess.QUEEN: self.queen_positional_bonus,
+            chess.KING: self.king_positional_bonus,
+        }
 
         self.enemy_king_positional_bonus = [
             0, 0, 0, 0, 0, 0, 0, 0,
@@ -103,14 +102,20 @@ class Client_minmax_alpha_beta(Client):
             0, 0, 0, 0, 0, 0, 0, 0
         ]
 
+        
+
+        self.queen_value_per_mobility = 0.02
+        self.knight_value_per_mobility = 0.04
+        self.bishop_value_per_mobility = 0.05
+        self.rook_value_per_mobility = 0.03
+        self.king_value_per_mobility = 0.01
+
     def flip_board(self, sq):
         return sq ^ 56
 
     def position_evaluation(self):
         # TODO
         # invert is wrong, black king positional bonus should be mirrored
-
-
         # Use last move to optimize evaluation (only compute changes)
         # Piece–square tables
         # Mobility (already partly done)
@@ -118,11 +123,12 @@ class Client_minmax_alpha_beta(Client):
         # Pawn structure (isolated, doubled, passed pawns)
         # Tempo / side to move
 
-        enemy_color = self.game.board.turn
+        board = self.game.board
+        enemy_color = board.turn
         my_color = not enemy_color
 
-        # Does the game have a winner?
-        if self.game.is_game_over():
+        # Terminal positions
+        if board.is_game_over():
             winner = self.game.get_winner()
             if winner == my_color:
                 return float('inf')
@@ -131,80 +137,22 @@ class Client_minmax_alpha_beta(Client):
             else:
                 return 0
 
-        # Count material
         eval_score = 0
-        for piece_type in self.piece_values:
-            eval_score += len(self.game.board.pieces(piece_type, my_color)) * self.piece_values[piece_type]
-            eval_score -= len(self.game.board.pieces(piece_type, enemy_color)) * self.piece_values[piece_type]
 
-        moves = list(self.game.board.legal_moves)
+        for piece_type in chess.PIECE_TYPES:
+            value = self.piece_values[piece_type]
+            table = self.psqt[piece_type]
 
-        for square in chess.SQUARES:
-            mobility = sum(1 for move in moves if move.from_square == square)
-            piece = self.game.board.piece_at(square)
-            if piece:
-                if piece.piece_type == chess.KNIGHT:
-                    if piece.color == my_color:
-                        eval_score += self.knight_positional_bonus[square]
-                        eval_score += self.knight_value_per_mobility * mobility
-                    else:
-                        eval_score -= self.knight_positional_bonus[square]
-                        eval_score -= self.knight_value_per_mobility * mobility
-                elif piece.piece_type == chess.BISHOP:
-                    if piece.color == my_color:
-                        eval_score += self.bishop_positional_bonus[square]
-                        eval_score += self.bishop_value_per_mobility * mobility
-                    else:
-                        eval_score -= self.bishop_positional_bonus[square]
-                        eval_score -= self.bishop_value_per_mobility * mobility
-                elif piece.piece_type == chess.ROOK:
-                    if my_color == chess.WHITE:
-                        if piece.color == my_color:
-                            eval_score += self.rook_positional_bonus[square]
-                            eval_score += self.rook_value_per_mobility * mobility
-                        else:
-                            eval_score -= self.rook_positional_bonus[chess.square_mirror(square)]
-                            eval_score -= self.rook_value_per_mobility * mobility
-                    else:
-                        if piece.color == my_color:
-                            eval_score += self.rook_positional_bonus[chess.square_mirror(square)]
-                            eval_score += self.rook_value_per_mobility * mobility
-                        else:
-                            eval_score -= self.rook_positional_bonus[square]
-                            eval_score -= self.rook_value_per_mobility * mobility
-                elif piece.piece_type == chess.PAWN:
-                    if my_color == chess.WHITE:
-                        if piece.color == my_color:
-                            eval_score += self.pawn_positional_bonus[square]
-                        else:
-                            eval_score -= self.pawn_positional_bonus[chess.square_mirror(square)]
-                    else:
-                        if piece.color == my_color:
-                            eval_score += self.pawn_positional_bonus[chess.square_mirror(square)]
-                        else:
-                            eval_score -= self.pawn_positional_bonus[square]
-                elif piece.piece_type == chess.QUEEN:
-                    if piece.color == my_color:
-                        eval_score += self.queen_positional_bonus[square]
-                        eval_score += self.queen_value_per_mobility * mobility
-                    else:
-                        eval_score -= self.queen_positional_bonus[square]
-                        eval_score -= self.queen_value_per_mobility * mobility
-                elif piece.piece_type == chess.KING:
-                    if my_color == chess.WHITE:
-                        if piece.color == my_color:
-                            eval_score += self.king_positional_bonus[square]
-                            eval_score += self.king_value_per_mobility * mobility
-                        else:
-                            eval_score -= self.king_positional_bonus[chess.square_mirror(square)]
-                            eval_score -= self.king_value_per_mobility * mobility
-                    else:
-                        if piece.color == my_color:
-                            eval_score += self.king_positional_bonus[chess.square_mirror(square)]
-                            eval_score += self.king_value_per_mobility * mobility
-                        else:
-                            eval_score -= self.king_positional_bonus[square]
-                            eval_score -= self.king_value_per_mobility * mobility
+            # My pieces
+            for square in board.pieces(piece_type, my_color):
+                idx = square if my_color == chess.WHITE else self.flip_board(square)
+                eval_score += value + table[idx]
+
+            # Enemy pieces
+            for square in board.pieces(piece_type, enemy_color):
+                idx = square if enemy_color == chess.WHITE else self.flip_board(square)
+                eval_score -= value + table[idx]
+
 
         # move the king closer to the enemy king
         # Calculate the distance
@@ -216,7 +164,7 @@ class Client_minmax_alpha_beta(Client):
     def minimax(self, depth, alpha, beta, maximizing_player):
         # Terminal condition
         if depth == 0 or self.game.is_game_over():
-            return self.game.position_evaluation()
+            return self.position_evaluation()
 
         if maximizing_player:
             value = float("-inf")
@@ -245,6 +193,8 @@ class Client_minmax_alpha_beta(Client):
         best_value = float("-inf")
         best_move = None
 
+        start_time = time.time()
+
         for move in self.game.get_possible_moves():
             self.game.make_move(move)
             value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
@@ -252,6 +202,9 @@ class Client_minmax_alpha_beta(Client):
             if value > best_value:
                 best_value = value
                 best_move = move
+
+        end_time = time.time()
+        print(f"Minimax with alpha-beta pruning took {end_time - start_time:.2f} seconds")
 
         return best_move
 

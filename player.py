@@ -3,10 +3,11 @@ from Client.client_random import Client_random
 from Client.client_manual import Client_manual
 from Client.client_minmax_V1 import Client_minmax
 from Client.client_minmax_alpha_beta_V1 import Client_minmax_alpha_beta
+from Client.client_V1_1 import Client_V1_1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Choose Client type")
-    parser.add_argument('--c', choices=['random', 'manual', 'minmax', 'minmax_alpha_beta'], default='minmax_alpha_beta', help='Type of client to use')
+    parser.add_argument('--c', choices=['random', 'manual', 'minmax', 'minmax_alpha_beta', 'V1_1'], default='V1_1', help='Type of client to use')
     args = parser.parse_args()  
     if args.c == 'random':
         client = Client_random()
@@ -19,4 +20,7 @@ if __name__ == "__main__":
         client.run()
     elif args.c == 'minmax_alpha_beta':
         client = Client_minmax_alpha_beta()
+        client.run()
+    elif args.c == 'V1_1':
+        client = Client_V1_1()
         client.run()
