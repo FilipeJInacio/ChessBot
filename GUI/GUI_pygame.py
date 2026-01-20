@@ -230,38 +230,69 @@ class GUI_pygame:
         sqSelected = () 
         playerClicks = []
 
+        dragging = False
+        drag_start_sq = None
+        drag_piece = None
+        mouse_pos = (0, 0)
+
+
         self.start_event.set()
         while self.running:
             for e in p.event.get():
                 if e.type == p.QUIT:
                     self.running = False
-                elif e.type == p.MOUSEBUTTONDOWN:
-                    location = p.mouse.get_pos()  # (x,y) location of mouse
-                    col = location[0] // self.render.SQ_SIZE
-                    row = location[1] // self.render.SQ_SIZE
-                    if sqSelected == (row, col):  # user clicked the same square twice
-                        sqSelected = ()  # deselect
-                        playerClicks = []  # clear player clicks
-                    else:
-                        sqSelected = (row, col)
-                        playerClicks.append(sqSelected)  # append for both 1st and 2nd clicks
-                    if len(playerClicks) == 2:  # after 2nd click
-                        move = chess.Move.from_uci(f"{chr(playerClicks[0][1]+97)}{8-playerClicks[0][0]}{chr(playerClicks[1][1]+97)}{8-playerClicks[1][0]}")
+                elif e.type == p.MOUSEBUTTONDOWN and e.button == 1:
+                    mouse_pos = p.mouse.get_pos()
+                    col = mouse_pos[0] // self.render.SQ_SIZE
+                    row = mouse_pos[1] // self.render.SQ_SIZE
+                    square = chess.square(col, 7 - row)
 
-                        if self.game.board.piece_at(move.from_square):
-                            if self.game.board.piece_at(move.from_square).piece_type == chess.PAWN and ((chess.square_rank(move.to_square) == 0 or chess.square_rank(move.to_square) == 7)):
-                                # render promotion choice
-                                promotion_choice = None
-                                while promotion_choice not in ['q', 'r', 'b', 'n']:
-                                    promotion_choice = input("Promote to (q, r, b, n): ").lower()
-                                promotion_map = {'q': chess.QUEEN, 'r': chess.ROOK, 'b': chess.BISHOP, 'n': chess.KNIGHT}
-                                move = chess.Move(move.from_square, move.to_square, promotion=promotion_map[promotion_choice])
-                            with self.state_lock:
-                                if move in self.game.board.legal_moves:
-                                    self.selected_move = move.uci()
-                                    self.move_event.set()
-                            sqSelected = ()  # reset user clicks
-                            playerClicks = []
+                    piece = self.game.board.piece_at(square)
+                    if piece:
+                        dragging = True
+                        drag_start_sq = square
+                        drag_piece = piece
+
+                elif e.type == p.MOUSEMOTION:
+                    mouse_pos = p.mouse.get_pos()
+
+                elif e.type == p.MOUSEBUTTONUP and e.button == 1 and dragging:
+                    mouse_pos = p.mouse.get_pos()
+                    col = mouse_pos[0] // self.render.SQ_SIZE
+                    row = mouse_pos[1] // self.render.SQ_SIZE
+                    target_sq = chess.square(col, 7 - row)
+
+                    move = chess.Move(drag_start_sq, target_sq)
+
+                    # Pawn promotion
+                    if drag_piece.piece_type == chess.PAWN and chess.square_rank(target_sq) in (0, 7):
+                        # is it even a legal move?
+                        test_move = chess.Move(drag_start_sq, target_sq, promotion=chess.QUEEN)
+                        if test_move not in self.game.board.legal_moves:
+                            dragging = False
+                            drag_start_sq = None
+                            drag_piece = None
+                            continue
+                        promotion_choice = None
+                        while promotion_choice not in ['q', 'r', 'b', 'n']:
+                            promotion_choice = input("Promote to (q, r, b, n): ").lower()
+                        promotion_map = {
+                            'q': chess.QUEEN,
+                            'r': chess.ROOK,
+                            'b': chess.BISHOP,
+                            'n': chess.KNIGHT
+                        }
+                        move = chess.Move(drag_start_sq, target_sq,
+                                        promotion=promotion_map[promotion_choice])
+
+                    with self.state_lock:
+                        if move in self.game.board.legal_moves:
+                            self.selected_move = move.uci()
+                            self.move_event.set()
+
+                    dragging = False
+                    drag_start_sq = None
+                    drag_piece = None
 
 
 
