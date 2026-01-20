@@ -45,6 +45,9 @@ class BoardRenderer:
             s.fill(p.Color('yellow'))
             fr = last_move.from_square
             to = last_move.to_square
+            # invert fr and to
+            fr = fr ^ 56
+            to = to ^ 56
             self.screen.blit(s, (fr % 8 * self.SQ_SIZE, fr // 8 * self.SQ_SIZE))
             self.screen.blit(s, (to % 8 * self.SQ_SIZE, to // 8 * self.SQ_SIZE))
 

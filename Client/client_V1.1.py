@@ -1,3 +1,4 @@
+from shutil import move
 from Client.client import Client
 import chess
 
@@ -102,7 +103,21 @@ class Client_minmax_alpha_beta(Client):
             0, 0, 0, 0, 0, 0, 0, 0
         ]
 
+    def flip_board(self, sq):
+        return sq ^ 56
+
     def position_evaluation(self):
+        # TODO
+        # invert is wrong, black king positional bonus should be mirrored
+
+
+        # Use last move to optimize evaluation (only compute changes)
+        # Piece–square tables
+        # Mobility (already partly done)
+        # King safety
+        # Pawn structure (isolated, doubled, passed pawns)
+        # Tempo / side to move
+
         enemy_color = self.game.board.turn
         my_color = not enemy_color
 
@@ -201,7 +216,7 @@ class Client_minmax_alpha_beta(Client):
     def minimax(self, depth, alpha, beta, maximizing_player):
         # Terminal condition
         if depth == 0 or self.game.is_game_over():
-            return self.position_evaluation()
+            return self.game.position_evaluation()
 
         if maximizing_player:
             value = float("-inf")
