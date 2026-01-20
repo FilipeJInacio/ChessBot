@@ -17,3 +17,4 @@ class Client_manual(Client):
         return move_uci
 
 
+    

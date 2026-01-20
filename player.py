@@ -1,8 +1,8 @@
 import argparse
 from Client.client_random import Client_random
 from Client.client_manual import Client_manual
-from Client.client_minmax import Client_minmax
-from Client.client_minmax_alpha_beta import Client_minmax_alpha_beta
+from Client.client_minmax_V1 import Client_minmax
+from Client.client_minmax_alpha_beta_V1 import Client_minmax_alpha_beta
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Choose Client type")
