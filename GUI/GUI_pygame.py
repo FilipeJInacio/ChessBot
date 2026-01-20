@@ -227,8 +227,6 @@ class GUI_pygame:
         self.clock = p.time.Clock()
         self.render.screen.fill(p.Color("white"))
         self.render.load_images()
-        sqSelected = () 
-        playerClicks = []
 
         dragging = False
         drag_start_sq = None

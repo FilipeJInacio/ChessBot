@@ -89,8 +89,6 @@ class UI_pygame:
         self.render.screen.fill(p.Color("white"))
         self.render.load_images()
 
-
-
         last_msg = b""
         while self.running:
             for e in p.event.get():
@@ -99,12 +97,10 @@ class UI_pygame:
             try:
                 msg = self.sub.recv_json()
                 if msg != last_msg:
-                    with self.state_lock:
-                        self.game.from_fen(msg["fen"])
-                        self.render.render(self.game, chess.Move.from_uci(msg["last_move"]) if msg["last_move"] else None)
-                        self.clock.tick(self.render.MAX_FPS)
-                        p.display.flip()
-
+                    self.game.from_fen(msg["fen"])
+                    self.render.render(self.game, chess.Move.from_uci(msg["last_move"]) if msg["last_move"] else None)
+                    self.clock.tick(self.render.MAX_FPS)
+                    p.display.flip()
                     last_msg = msg
 
             except zmq.Again:
