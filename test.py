@@ -26,6 +26,8 @@
 from Client.client_V1_1 import Client_V1_1
 import chess
 
-client = Client_V1_1()
-print(client.flip_board(56))
-print(client.flip_board(0))
+
+chess_board = chess.Board()
+list_k = chess_board._transposition_key()
+for each in list_k:
+    print(list(chess.scan_reversed(each)))

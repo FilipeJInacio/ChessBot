@@ -2,11 +2,14 @@ import time
 from Client.client import Client
 import chess
 
-# bug correction and optimizations for version 1.0
+# Added lookup table to cache position evaluations
 
 class Client_V1_1(Client):
     def __init__(self):
         super().__init__()
+
+        # Lookup table
+        self.tt = {}
 
         # Material evaluation
         self.piece_values = {
@@ -20,6 +23,17 @@ class Client_V1_1(Client):
 
         # Positional evaluation
         self.knight_positional_bonus = [
+            -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5,
+            -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
+            -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
+            -0.3, 0.05, 0.20, 0.25, 0.25, 0.20, 0.05, -0.3,
+            -0.3, 0.05, 0.20, 0.25, 0.25, 0.20, 0.05, -0.3,
+            -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
+            -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
+            -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5
+        ]
+
+        self.knight_positional_bonus_transposed = [
             -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5,
             -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
             -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
@@ -128,6 +142,11 @@ class Client_V1_1(Client):
         # Tempo / side to move
 
         board = self.game.board
+        key = board._transposition_key()
+        if key in self.tt:
+            return self.tt[key]
+        
+        
         enemy_color = board.turn
         my_color = not enemy_color
 
@@ -140,6 +159,7 @@ class Client_V1_1(Client):
                 score = float('-inf')
             else:
                 score = 0
+            self.tt[key] = score
             return score
 
         eval_score = 0
@@ -163,6 +183,7 @@ class Client_V1_1(Client):
         # Calculate the distance
         # Value increases as the opponent has less pieces
                 
+        self.tt[key] = eval_score
         return eval_score
 
     def minimax(self, depth, alpha, beta, maximizing_player):
