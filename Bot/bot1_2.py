@@ -4,8 +4,10 @@ import chess
 
 # MINMAX with alpha-beta pruning and transposition table and basic positional evaluation
 # Improvement: Speed up
-
-
+# Depth 4
+# WHITE 1.2, BLACK 1.1: 26.93s to 20.37s
+# WHITE 1.1, BLACK 1.2: 34.76s to 18.35s
+# Result                12s    to 2s
 
 
 
@@ -137,13 +139,11 @@ class Bot1_2(Client):
     def minimax(self, depth, alpha, beta, maximizing_player):
         # Terminal condition
         if depth == 0 or self.game.is_game_over():
-            value = self.position_evaluation()
-            return value
+            return self.position_evaluation()
 
         if maximizing_player:
             value = float("-inf")
             for move in self.game.get_possible_moves():
-                # Simulate the move
                 self.game.make_move(move)
                 value = max(value, self.minimax(depth - 1, alpha, beta, False))
                 alpha = max(alpha, value)
