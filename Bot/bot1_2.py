@@ -2,30 +2,19 @@ import time
 from Client.client import Client
 import chess
 
-# Added lookup table to cache position evaluations
-# WHITE TRUE and BLACK FALSE
-
-# TODO
-# move king to help with checkmate
-# positioning bonus should transition to end game bonus
-# calculate distance from own king to enemy king in end game
-
-# Use last move to optimize evaluation (only compute changes)
-
-# Piece–square tables
-# Mobility (already partly done)
-# King safety
-# Pawn structure (isolated, doubled, passed pawns)
-# Tempo / side to move
+# MINMAX with alpha-beta pruning and transposition table and basic positional evaluation
+# Improvement: Speed up
 
 
-class Client_V1_2(Client):
+
+
+
+class Bot1_2(Client):
     def __init__(self):
         super().__init__()
 
         # Lookup table
         self.tt_1 = {} # position evaluation
-        self.tt_2 = {} # alpha-beta pruning
 
         # Material evaluation
         self.piece_values = {
@@ -39,17 +28,6 @@ class Client_V1_2(Client):
 
         # Positional evaluation
         self.knight_positional_bonus = [
-            -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5,
-            -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
-            -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
-            -0.3, 0.05, 0.20, 0.25, 0.25, 0.20, 0.05, -0.3,
-            -0.3, 0.05, 0.20, 0.25, 0.25, 0.20, 0.05, -0.3,
-            -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
-            -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
-            -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5
-        ]
-
-        self.knight_positional_bonus_transposed = [
             -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5,
             -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
             -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
@@ -124,40 +102,17 @@ class Client_V1_2(Client):
             chess.KING: self.king_positional_bonus,
         }
 
-        self.enemy_king_positional_bonus = [
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 2, 3, 4, 4, 3, 2, 0,
-            0, 2, 4, 5, 5, 4, 2, 0,
-            0, 2, 3, 4, 4, 3, 2, 0,
-            0, 1, 2, 2, 2, 2, 1, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0
-        ]
-
-        
-
-        self.queen_value_per_mobility = 0.02
-        self.knight_value_per_mobility = 0.04
-        self.bishop_value_per_mobility = 0.05
-        self.rook_value_per_mobility = 0.03
-        self.king_value_per_mobility = 0.01
-
     def position_evaluation(self):
         board = self.game.board
         key = board._transposition_key()
         if key in self.tt_1:
             return self.tt_1[key]
         
-        enemy_color = board.turn
-        my_color = not enemy_color
-
-        # Terminal positions
         if board.is_game_over():
             winner = self.game.get_winner()
-            if winner == my_color:
+            if winner == chess.WHITE:
                 score = float('inf')
-            elif winner == enemy_color:
+            elif winner == chess.BLACK:
                 score = float('-inf')
             else:
                 score = 0
@@ -170,20 +125,11 @@ class Client_V1_2(Client):
             value = self.piece_values[piece_type]
             table = self.psqt[piece_type]
 
-            # My pieces
-            for square in board.pieces(piece_type, my_color):
-                idx = square if my_color == chess.BLACK else square ^ 56
-                eval_score += value + table[idx]
+            for square in board.pieces(piece_type, chess.WHITE):
+                eval_score += value + table[square ^ 56]
 
-            # Enemy pieces
-            for square in board.pieces(piece_type, enemy_color):
-                idx = square if enemy_color == chess.BLACK else square ^ 56
-                eval_score -= value + table[idx]
-
-
-        # move the king closer to the enemy king
-        # Calculate the distance
-        # Value increases as the opponent has less pieces
+            for square in board.pieces(piece_type, chess.BLACK):
+                eval_score -= value + table[square]
                 
         self.tt_1[key] = eval_score
         return eval_score
@@ -191,7 +137,8 @@ class Client_V1_2(Client):
     def minimax(self, depth, alpha, beta, maximizing_player):
         # Terminal condition
         if depth == 0 or self.game.is_game_over():
-            return self.position_evaluation()
+            value = self.position_evaluation()
+            return value
 
         if maximizing_player:
             value = float("-inf")
@@ -217,17 +164,27 @@ class Client_V1_2(Client):
         
     def select_move(self):
         start_time = time.time()
-        depth = 2
-        best_value = float("-inf")
+        depth = 4
         best_move = None
 
-        for move in self.game.get_possible_moves():
-            self.game.make_move(move)
-            value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
-            self.game.undo_move()
-            if value > best_value:
-                best_value = value
-                best_move = move
+        if self.game.board.turn == chess.WHITE:
+            best_value = float("-inf")
+            for move in self.game.get_possible_moves():
+                self.game.make_move(move)
+                value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
+                self.game.undo_move()
+                if value > best_value:
+                    best_value = value
+                    best_move = move
+        else:
+            best_value = float("inf")
+            for move in self.game.get_possible_moves():
+                self.game.make_move(move)
+                value = self.minimax(depth - 1, float("-inf"), float("inf"), True)
+                self.game.undo_move()
+                if value < best_value:
+                    best_value = value
+                    best_move = move
 
         end_time = time.time()
         print(f"Minimax with alpha-beta pruning took {end_time - start_time:.2f} seconds")

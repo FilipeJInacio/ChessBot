@@ -2,9 +2,9 @@ import time
 from Client.client import Client
 import chess
 
-# bug correction and optimizations for version 1.0
+# MINMAX with alpha-beta pruning and basic positional evaluation
 
-class Client_V1_1(Client):
+class Bot1_1(Client):
     def __init__(self):
         super().__init__()
 
@@ -94,49 +94,15 @@ class Client_V1_1(Client):
             chess.KING: self.king_positional_bonus,
         }
 
-        self.enemy_king_positional_bonus = [
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 2, 3, 4, 4, 3, 2, 0,
-            0, 2, 4, 5, 5, 4, 2, 0,
-            0, 2, 3, 4, 4, 3, 2, 0,
-            0, 1, 2, 2, 2, 2, 1, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0
-        ]
-
-        
-
-        self.queen_value_per_mobility = 0.02
-        self.knight_value_per_mobility = 0.04
-        self.bishop_value_per_mobility = 0.05
-        self.rook_value_per_mobility = 0.03
-        self.king_value_per_mobility = 0.01
-
-    def flip_board(self, sq):
-        return sq ^ 56
-
     def position_evaluation(self):
-        # TODO
-        # invert is wrong, black king positional bonus should be mirrored
-        # distance to enemy king to checkmate faster
-        # Use last move to optimize evaluation (only compute changes)
-        # Piece–square tables
-        # Mobility (already partly done)
-        # King safety
-        # Pawn structure (isolated, doubled, passed pawns)
-        # Tempo / side to move
-
         board = self.game.board
-        enemy_color = board.turn
-        my_color = not enemy_color
 
         # Terminal positions
         if board.is_game_over():
             winner = self.game.get_winner()
-            if winner == my_color:
+            if winner == chess.WHITE:
                 score = float('inf')
-            elif winner == enemy_color:
+            elif winner == chess.BLACK:
                 score = float('-inf')
             else:
                 score = 0
@@ -148,27 +114,19 @@ class Client_V1_1(Client):
             value = self.piece_values[piece_type]
             table = self.psqt[piece_type]
 
-            # My pieces
-            for square in board.pieces(piece_type, my_color):
-                idx = self.flip_board(square) if my_color == chess.WHITE else square
-                eval_score += value + table[idx]
+            for square in board.pieces(piece_type, chess.WHITE):
+                eval_score += value + table[square ^ 56]
 
-            # Enemy pieces
-            for square in board.pieces(piece_type, enemy_color):
-                idx = self.flip_board(square) if enemy_color == chess.WHITE else square
-                eval_score -= value + table[idx]
+            for square in board.pieces(piece_type, chess.BLACK):
+                eval_score -= value + table[square]
 
-
-        # move the king closer to the enemy king
-        # Calculate the distance
-        # Value increases as the opponent has less pieces
-                
         return eval_score
 
     def minimax(self, depth, alpha, beta, maximizing_player):
         # Terminal condition
         if depth == 0 or self.game.is_game_over():
-            return self.position_evaluation()
+            value = self.position_evaluation()
+            return value
 
         if maximizing_player:
             value = float("-inf")
@@ -193,23 +151,32 @@ class Client_V1_1(Client):
             return value
         
     def select_move(self):
-        depth = 3
-        best_value = float("-inf")
+        start_time = time.time()
+        depth = 4
         best_move = None
 
-        start_time = time.time()
-
-        for move in self.game.get_possible_moves():
-            self.game.make_move(move)
-            value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
-            self.game.undo_move()
-            if value > best_value:
-                best_value = value
-                best_move = move
+        if self.game.board.turn == chess.WHITE:
+            best_value = float("-inf")
+            for move in self.game.get_possible_moves():
+                self.game.make_move(move)
+                value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
+                self.game.undo_move()
+                if value > best_value:
+                    best_value = value
+                    best_move = move
+        else:
+            best_value = float("inf")
+            for move in self.game.get_possible_moves():
+                self.game.make_move(move)
+                value = self.minimax(depth - 1, float("-inf"), float("inf"), True)
+                self.game.undo_move()
+                if value < best_value:
+                    best_value = value
+                    best_move = move
 
         end_time = time.time()
         print(f"Minimax with alpha-beta pruning took {end_time - start_time:.2f} seconds")
 
-        return best_move
+        return best_move, end_time - start_time
 
 

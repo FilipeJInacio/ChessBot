@@ -1,0 +1,12 @@
+TODO
+move king to help with checkmate
+positioning bonus should transition to end game bonus
+calculate distance from own king to enemy king in end game
+
+Use last move to optimize evaluation (only compute changes)
+
+Piece–square tables
+Mobility (already partly done)
+King safety
+Pawn structure (isolated, doubled, passed pawns)
+Tempo / side to move
