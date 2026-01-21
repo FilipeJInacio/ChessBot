@@ -1,9 +1,12 @@
 import time
 from Client.client import Client
 import chess
+from dataclasses import dataclass
 
-# Added lookup table to cache position evaluations
-# WHITE TRUE and BLACK FALSE
+# Added Negamax transposition tables
+
+# WHITE: 29.05s
+# BLACK: 38.34
 
 # TODO
 # move king to help with checkmate
@@ -12,20 +15,31 @@ import chess
 
 # Use last move to optimize evaluation (only compute changes)
 
+# order moves heuristic (checks, captures, threats)
+
 # Piece–square tables
 # Mobility (already partly done)
 # King safety
 # Pawn structure (isolated, doubled, passed pawns)
 # Tempo / side to move
 
+@dataclass
+class TTEntry:
+    value: float
+    depth: int
+    flag: int  # EXACT, LOWERBOUND, UPPERBOUND
 
-class Client_V1_2(Client):
+EXACT = 0
+LOWERBOUND = 1
+UPPERBOUND = 2
+
+class Client_V1_4(Client):
     def __init__(self):
         super().__init__()
 
         # Lookup table
         self.tt_1 = {} # position evaluation
-        self.tt_2 = {} # alpha-beta pruning
+        self.tt_2 = {} # negamax with alpha-beta pruning
 
         # Material evaluation
         self.piece_values = {
@@ -149,8 +163,8 @@ class Client_V1_2(Client):
         if key in self.tt_1:
             return self.tt_1[key]
         
-        enemy_color = board.turn
-        my_color = not enemy_color
+        my_color = board.turn     # swapped because of negamax
+        enemy_color = not my_color
 
         # Terminal positions
         if board.is_game_over():
@@ -179,58 +193,77 @@ class Client_V1_2(Client):
             for square in board.pieces(piece_type, enemy_color):
                 idx = square if enemy_color == chess.BLACK else square ^ 56
                 eval_score -= value + table[idx]
-
-
-        # move the king closer to the enemy king
-        # Calculate the distance
-        # Value increases as the opponent has less pieces
                 
         self.tt_1[key] = eval_score
         return eval_score
 
-    def minimax(self, depth, alpha, beta, maximizing_player):
+    def negamax(self, depth, alpha, beta):
+        board = self.game.board
+        key = board._transposition_key()
+
+        # TT lookup
+        if key in self.tt_2:
+            entry = self.tt_2[key]
+            if entry.depth >= depth:
+                if entry.flag == EXACT:
+                    return entry.value
+                elif entry.flag == LOWERBOUND:
+                    alpha = max(alpha, entry.value)
+                elif entry.flag == UPPERBOUND:
+                    beta = min(beta, entry.value)
+                if alpha >= beta:
+                    return entry.value
+
         # Terminal condition
         if depth == 0 or self.game.is_game_over():
-            return self.position_evaluation()
+            value = self.position_evaluation()
+            self.tt_2[key] = TTEntry(value, depth, EXACT)
+            return value
 
-        if maximizing_player:
-            value = float("-inf")
-            for move in self.game.get_possible_moves():
-                # Simulate the move
-                self.game.make_move(move)
-                value = max(value, self.minimax(depth - 1, alpha, beta, False))
-                alpha = max(alpha, value)
-                self.game.undo_move()
-                if beta <= alpha:
-                    break 
-            return value
+        value = float("-inf")
+        original_alpha = alpha
+
+        for move in self.game.get_possible_moves():
+            self.game.make_move(move)
+            score = -self.negamax(depth - 1, -beta, -alpha)
+            self.game.undo_move()
+
+            value = max(value, score)
+            alpha = max(alpha, score)
+
+            if alpha >= beta:
+                break  # alpha-beta cutoff
+
+        # Store in TT
+        if value <= original_alpha:
+            flag = UPPERBOUND
+        elif value >= beta:
+            flag = LOWERBOUND
         else:
-            value = float("inf")
-            for move in self.game.get_possible_moves():
-                self.game.make_move(move)
-                value = min(value, self.minimax(depth - 1, alpha, beta, True))
-                beta = min(beta, value)
-                self.game.undo_move()
-                if beta <= alpha:
-                    break
-            return value
+            flag = EXACT
+
+        self.tt_2[key] = TTEntry(value, depth, flag)
+        return value
         
     def select_move(self):
         start_time = time.time()
+
         depth = 2
+        signal = 1 if depth % 2 == 0 else -1
         best_value = float("-inf")
         best_move = None
 
         for move in self.game.get_possible_moves():
             self.game.make_move(move)
-            value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
+            value = signal * self.negamax(depth - 1, float("-inf"), float("inf"))
             self.game.undo_move()
+
             if value > best_value:
                 best_value = value
                 best_move = move
 
         end_time = time.time()
-        print(f"Minimax with alpha-beta pruning took {end_time - start_time:.2f} seconds")
+        print(f"Took {end_time - start_time:.2f} seconds")
 
         return best_move, end_time - start_time
 

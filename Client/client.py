@@ -7,6 +7,8 @@ class Client:
     def __init__(self):
         self.game = ChessGame()
 
+        self.total_time = 0
+
         self.context = zmq.Context()
         self.dealer = self.context.socket(zmq.DEALER)
         client_id = uuid.uuid4().bytes
@@ -50,7 +52,7 @@ class Client:
 
             if msg_type == b"game_over":
                 winner = payload.decode("utf-8") if payload else "Draw"
-                print(f"Game over! Winner: {winner}")
+                print(f"Game over! Winner: {winner}. Total time: {self.total_time:.2f} seconds")
                 self.running = False
                 continue
 
@@ -63,7 +65,8 @@ class Client:
                     if last_move_uci:
                         self.game.make_move(last_move_uci)
 
-                    move_uci = self.select_move()
+                    move_uci, time = self.select_move()
+                    self.total_time += time
 
                     self.game.make_move(move_uci)
 

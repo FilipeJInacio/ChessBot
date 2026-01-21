@@ -54,6 +54,7 @@ class BoardRenderer:
         if game.board.is_check():
             # highlight king in check
             king_pos = game.board.king(game.board.turn)
+            king_pos = king_pos ^ 56
             s = p.Surface((self.SQ_SIZE, self.SQ_SIZE))
             s.set_alpha(100)
             s.fill(p.Color('red'))

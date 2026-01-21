@@ -2,8 +2,10 @@ import time
 from Client.client import Client
 import chess
 
-# Added lookup table to cache position evaluations
-# WHITE TRUE and BLACK FALSE
+# Negamax
+
+# WHITE: 
+# BLACK: 
 
 # TODO
 # move king to help with checkmate
@@ -19,13 +21,12 @@ import chess
 # Tempo / side to move
 
 
-class Client_V1_2(Client):
+class Client_V1_3(Client):
     def __init__(self):
         super().__init__()
 
         # Lookup table
         self.tt_1 = {} # position evaluation
-        self.tt_2 = {} # alpha-beta pruning
 
         # Material evaluation
         self.piece_values = {
@@ -149,8 +150,8 @@ class Client_V1_2(Client):
         if key in self.tt_1:
             return self.tt_1[key]
         
-        enemy_color = board.turn
-        my_color = not enemy_color
+        my_color = board.turn     # swapped because of negamax
+        enemy_color = not my_color
 
         # Terminal positions
         if board.is_game_over():
@@ -179,58 +180,47 @@ class Client_V1_2(Client):
             for square in board.pieces(piece_type, enemy_color):
                 idx = square if enemy_color == chess.BLACK else square ^ 56
                 eval_score -= value + table[idx]
-
-
-        # move the king closer to the enemy king
-        # Calculate the distance
-        # Value increases as the opponent has less pieces
                 
         self.tt_1[key] = eval_score
         return eval_score
 
-    def minimax(self, depth, alpha, beta, maximizing_player):
+    def negamax(self, depth, alpha, beta):
         # Terminal condition
         if depth == 0 or self.game.is_game_over():
             return self.position_evaluation()
 
-        if maximizing_player:
-            value = float("-inf")
-            for move in self.game.get_possible_moves():
-                # Simulate the move
-                self.game.make_move(move)
-                value = max(value, self.minimax(depth - 1, alpha, beta, False))
-                alpha = max(alpha, value)
-                self.game.undo_move()
-                if beta <= alpha:
-                    break 
-            return value
-        else:
-            value = float("inf")
-            for move in self.game.get_possible_moves():
-                self.game.make_move(move)
-                value = min(value, self.minimax(depth - 1, alpha, beta, True))
-                beta = min(beta, value)
-                self.game.undo_move()
-                if beta <= alpha:
-                    break
-            return value
+        value = float("-inf")
+
+        for move in self.game.get_possible_moves():
+            self.game.make_move(move)
+            score = -self.negamax(depth - 1, -beta, -alpha)
+            self.game.undo_move()
+
+            value = max(value, score)
+            alpha = max(alpha, value)
+
+            if alpha >= beta:
+                break  # alpha-beta cutoff
+
+        return value
         
     def select_move(self):
         start_time = time.time()
-        depth = 2
+        depth = 3
         best_value = float("-inf")
         best_move = None
 
         for move in self.game.get_possible_moves():
             self.game.make_move(move)
-            value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
+            value = -self.negamax(depth - 1, float("-inf"), float("inf"))
             self.game.undo_move()
+
             if value > best_value:
                 best_value = value
                 best_move = move
 
         end_time = time.time()
-        print(f"Minimax with alpha-beta pruning took {end_time - start_time:.2f} seconds")
+        print(f"Took {end_time - start_time:.2f} seconds")
 
         return best_move, end_time - start_time
 
