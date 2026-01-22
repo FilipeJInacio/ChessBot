@@ -1,20 +1,26 @@
 import time
 from Client.client import Client
 import chess
+from dataclasses import dataclass
 
-# NEGAMAX with alpha-beta pruning and transposition table and basic positional evaluation
-# Improvement: Speed up? Simplification
+@dataclass
+class TTEntry:
+    value: float
+    depth: int
+    flag: int  # EXACT, LOWERBOUND, UPPERBOUND
+    best_move: chess.Move | None
 
+EXACT = 0
+LOWERBOUND = 1
+UPPERBOUND = 2
 
-
-
-
-class Bot1_2(Client):
+class Bot1_2_4(Client):
     def __init__(self):
         super().__init__()
 
         # Lookup table
         self.tt_1 = {} # position evaluation
+        self.tt_2 = {} # alpha-beta pruning
 
         # Material evaluation
         self.piece_values = {
@@ -134,36 +140,75 @@ class Bot1_2(Client):
         self.tt_1[key] = eval_score
         return eval_score
 
-    def negamax(self, depth, alpha, beta, turn_multiplier):
-        # Terminal condition
-        if depth == 0 or self.game.is_game_over():
-            return turn_multiplier * self.position_evaluation()
+    def ordered_moves(self, key):
+        moves = list(self.game.board.legal_moves)
+        entry = self.tt_2.get(key)
+        if entry and entry.best_move in moves:
+            moves.remove(entry.best_move)
+            moves.insert(0, entry.best_move)
+        moves.sort(key=lambda m: self.game.board.is_capture(m),reverse=True)
+        return moves
 
+    def negamax(self, depth, alpha, beta, turn_multiplier):
+        board = self.game.board
+        key = board._transposition_key()
+
+        # TT lookup
+        entry = self.tt_2.get(key)
+        if entry and entry.depth >= depth:
+            if entry.flag == EXACT:
+                return entry.value
+            elif entry.flag == LOWERBOUND:
+                alpha = max(alpha, entry.value)
+            elif entry.flag == UPPERBOUND:
+                beta = min(beta, entry.value)
+            if alpha >= beta:
+                return entry.value
+
+        if depth == 0 or self.game.is_game_over():
+            value = turn_multiplier * self.position_evaluation()
+            self.tt_2[key] = TTEntry(value, depth, EXACT, None)
+            return value
+
+        original_alpha = alpha
+        best_move = None
         value = float("-inf")
 
-        for move in self.game.get_possible_moves():
-            self.game.make_move(move)
-            score = -self.negamax(depth - 1, -beta, -alpha, -turn_multiplier)
-            self.game.undo_move()
+        for move in self.ordered_moves(key):
+            self.game.board.push(move)
+            new_value = -self.negamax(depth - 1, -beta, -alpha, -turn_multiplier)
+            self.game.board.pop()
 
-            value = max(value, score)
+            if new_value > value:
+                value = new_value
+                best_move = move
             alpha = max(alpha, value)
 
             if alpha >= beta:
                 break  # alpha-beta cutoff
 
+        # Store in TT
+        if value <= original_alpha:
+            flag = UPPERBOUND
+        elif value >= beta:
+            flag = LOWERBOUND
+        else:
+            flag = EXACT
+
+        self.tt_2[key] = TTEntry(value, depth, flag, best_move)
         return value
         
     def select_move(self):
         start_time = time.time()
-        depth = 4
+        depth = 5
         best_move = None
+        key = self.game.board._transposition_key()
         best_value = float("-inf")
 
-        for move in self.game.get_possible_moves():
-            self.game.make_move(move)
+        for move in self.ordered_moves(key):
+            self.game.board.push(move)
             value = -self.negamax(depth - 1, float("-inf"), float("inf"), 1 if self.game.board.turn == chess.WHITE else -1)
-            self.game.undo_move()
+            self.game.board.pop()
             if value > best_value:
                 best_value = value
                 best_move = move

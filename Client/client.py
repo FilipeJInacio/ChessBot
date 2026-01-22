@@ -1,3 +1,4 @@
+import chess
 import zmq
 import uuid
 import signal
@@ -63,14 +64,14 @@ class Client:
                     last_move_uci = payload.decode("utf-8") if payload else None
 
                     if last_move_uci:
-                        self.game.make_move(last_move_uci)
+                        self.game.make_move(chess.Move.from_uci(last_move_uci))
 
-                    move_uci, time = self.select_move()
+                    move, time = self.select_move()
                     self.total_time += time
 
-                    self.game.make_move(move_uci)
+                    self.game.make_move(move)
 
-                    self.dealer.send_multipart([b"move", move_uci.encode("utf-8")])
+                    self.dealer.send_multipart([b"move", move.uci().encode("utf-8")])
 
                     state = "waiting_for_move_ack"
                 continue

@@ -3,25 +3,9 @@ from Client.client import Client
 import chess
 from dataclasses import dataclass
 
-# Added Negamax transposition tables
+# MINMAX with alpha-beta pruning with transposition table, sorting and transposition table search and basic positional evaluation
+# Improvement: Speed up
 
-# WHITE: 29.05s
-# BLACK: 38.34
-
-# TODO
-# move king to help with checkmate
-# positioning bonus should transition to end game bonus
-# calculate distance from own king to enemy king in end game
-
-# Use last move to optimize evaluation (only compute changes)
-
-# order moves heuristic (checks, captures, threats)
-
-# Piece–square tables
-# Mobility (already partly done)
-# King safety
-# Pawn structure (isolated, doubled, passed pawns)
-# Tempo / side to move
 
 @dataclass
 class TTEntry:
@@ -33,13 +17,13 @@ EXACT = 0
 LOWERBOUND = 1
 UPPERBOUND = 2
 
-class Client_V1_4(Client):
+class Bot1_1_3(Client):
     def __init__(self):
         super().__init__()
 
         # Lookup table
         self.tt_1 = {} # position evaluation
-        self.tt_2 = {} # negamax with alpha-beta pruning
+        self.tt_2 = {} # alpha-beta pruning
 
         # Material evaluation
         self.piece_values = {
@@ -53,17 +37,6 @@ class Client_V1_4(Client):
 
         # Positional evaluation
         self.knight_positional_bonus = [
-            -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5,
-            -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
-            -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
-            -0.3, 0.05, 0.20, 0.25, 0.25, 0.20, 0.05, -0.3,
-            -0.3, 0.05, 0.20, 0.25, 0.25, 0.20, 0.05, -0.3,
-            -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
-            -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
-            -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5
-        ]
-
-        self.knight_positional_bonus_transposed = [
             -0.5, -0.4, -0.3, -0.3, -0.3, -0.3, -0.4, -0.5,
             -0.4, -0.2, 0.00, 0.05, 0.05, 0.00, -0.2, -0.4,
             -0.3, 0.00, 0.15, 0.20, 0.20, 0.15, 0.00, -0.3,
@@ -138,40 +111,17 @@ class Client_V1_4(Client):
             chess.KING: self.king_positional_bonus,
         }
 
-        self.enemy_king_positional_bonus = [
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 2, 3, 4, 4, 3, 2, 0,
-            0, 2, 4, 5, 5, 4, 2, 0,
-            0, 2, 3, 4, 4, 3, 2, 0,
-            0, 1, 2, 2, 2, 2, 1, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0
-        ]
-
-        
-
-        self.queen_value_per_mobility = 0.02
-        self.knight_value_per_mobility = 0.04
-        self.bishop_value_per_mobility = 0.05
-        self.rook_value_per_mobility = 0.03
-        self.king_value_per_mobility = 0.01
-
     def position_evaluation(self):
         board = self.game.board
         key = board._transposition_key()
         if key in self.tt_1:
             return self.tt_1[key]
         
-        my_color = board.turn     # swapped because of negamax
-        enemy_color = not my_color
-
-        # Terminal positions
         if board.is_game_over():
             winner = self.game.get_winner()
-            if winner == my_color:
+            if winner == chess.WHITE:
                 score = float('inf')
-            elif winner == enemy_color:
+            elif winner == chess.BLACK:
                 score = float('-inf')
             else:
                 score = 0
@@ -184,20 +134,21 @@ class Client_V1_4(Client):
             value = self.piece_values[piece_type]
             table = self.psqt[piece_type]
 
-            # My pieces
-            for square in board.pieces(piece_type, my_color):
-                idx = square if my_color == chess.BLACK else square ^ 56
-                eval_score += value + table[idx]
+            for square in board.pieces(piece_type, chess.WHITE):
+                eval_score += value + table[square ^ 56]
 
-            # Enemy pieces
-            for square in board.pieces(piece_type, enemy_color):
-                idx = square if enemy_color == chess.BLACK else square ^ 56
-                eval_score -= value + table[idx]
+            for square in board.pieces(piece_type, chess.BLACK):
+                eval_score -= value + table[square]
                 
         self.tt_1[key] = eval_score
         return eval_score
 
-    def negamax(self, depth, alpha, beta):
+    def ordered_moves(self):
+        moves = list(self.game.board.legal_moves)
+        moves.sort(key=lambda m: self.game.board.is_capture(m), reverse=True)
+        return moves
+
+    def minimax(self, depth, alpha, beta, maximizing_player):
         board = self.game.board
         key = board._transposition_key()
 
@@ -214,25 +165,31 @@ class Client_V1_4(Client):
                 if alpha >= beta:
                     return entry.value
 
-        # Terminal condition
         if depth == 0 or self.game.is_game_over():
             value = self.position_evaluation()
             self.tt_2[key] = TTEntry(value, depth, EXACT)
             return value
 
-        value = float("-inf")
         original_alpha = alpha
 
-        for move in self.game.get_possible_moves():
-            self.game.make_move(move)
-            score = -self.negamax(depth - 1, -beta, -alpha)
-            self.game.undo_move()
-
-            value = max(value, score)
-            alpha = max(alpha, score)
-
-            if alpha >= beta:
-                break  # alpha-beta cutoff
+        if maximizing_player:
+            value = float("-inf")
+            for move in self.ordered_moves():
+                self.game.board.push(move)
+                value = max(value, self.minimax(depth - 1, alpha, beta, False))
+                alpha = max(alpha, value)
+                self.game.board.pop()
+                if beta <= alpha:
+                    break 
+        else:
+            value = float("inf")
+            for move in self.ordered_moves():
+                self.game.board.push(move)
+                value = min(value, self.minimax(depth - 1, alpha, beta, True))
+                beta = min(beta, value)
+                self.game.board.pop()
+                if beta <= alpha:
+                    break
 
         # Store in TT
         if value <= original_alpha:
@@ -247,20 +204,27 @@ class Client_V1_4(Client):
         
     def select_move(self):
         start_time = time.time()
-
-        depth = 2
-        signal = 1 if depth % 2 == 0 else -1
-        best_value = float("-inf")
+        depth = 5
         best_move = None
 
-        for move in self.game.get_possible_moves():
-            self.game.make_move(move)
-            value = signal * self.negamax(depth - 1, float("-inf"), float("inf"))
-            self.game.undo_move()
-
-            if value > best_value:
-                best_value = value
-                best_move = move
+        if self.game.board.turn == chess.WHITE:
+            best_value = float("-inf")
+            for move in self.ordered_moves():
+                self.game.board.push(move)
+                value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
+                self.game.board.pop()
+                if value > best_value:
+                    best_value = value
+                    best_move = move
+        else:
+            best_value = float("inf")
+            for move in self.ordered_moves():
+                self.game.board.push(move)
+                value = self.minimax(depth - 1, float("-inf"), float("inf"), True)
+                self.game.board.pop()
+                if value < best_value:
+                    best_value = value
+                    best_move = move
 
         end_time = time.time()
         print(f"Took {end_time - start_time:.2f} seconds")

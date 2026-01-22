@@ -11,7 +11,7 @@ class ChessGame:
 
 
     def get_possible_moves(self):
-        return [move.uci() for move in self.board.legal_moves]
+        return self.board.legal_moves
 
     def get_last_move(self):
         if self.board.move_stack:
@@ -21,22 +21,13 @@ class ChessGame:
 
 
 
-    def make_move(self, move_uci):
-        try:
-            move = chess.Move.from_uci(move_uci)
-            if move in self.board.legal_moves:
-                self.board.push(move)
-                return True
-            else:
-                return False
-        except ValueError:
-            return False
+    def make_move(self, move):
+        self.board.push(move)
+
 
     def undo_move(self):
-        if self.board.move_stack:
-            self.board.pop()
-            return True
-        return False
+        self.board.pop()
+
     
 
 

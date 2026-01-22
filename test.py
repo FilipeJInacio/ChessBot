@@ -23,11 +23,9 @@
 
 
 
-from Client.client_V1_1 import Client_V1_1
+
 import chess
 
 
-chess_board = chess.Board()
-list_k = chess_board._transposition_key()
-for each in list_k:
-    print(list(chess.scan_reversed(each)))
+move = chess.Move(from_square=12, to_square=28)
+print(move)

@@ -4,7 +4,7 @@ import time
 import threading
 import signal
 from game import ChessGame
-
+import chess
 
 
 class Server:
@@ -90,7 +90,7 @@ class Server:
                     if identity != current_player_identity:
                         continue
 
-                    move = payload.decode("utf-8")
+                    move = chess.Move.from_uci(payload.decode("utf-8"))
                     if move in legal_moves:
                         with self.state_lock:
                             self.game.make_move(move)

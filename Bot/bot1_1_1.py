@@ -2,11 +2,21 @@ import time
 from Client.client import Client
 import chess
 
-# MINMAX with alpha-beta pruning and basic positional evaluation
+# MINMAX with alpha-beta pruning and transposition table and basic positional evaluation
+# Improvement: Speed up
+# Depth 4
+# WHITE 1.1.1, BLACK 1.1.0: 26.93s to 20.37s
+# WHITE 1.1.0, BLACK 1.1.1: 34.76s to 18.35s
+# Result                    12s    to 2s
 
-class Bot1_1(Client):
+
+
+class Bot1_1_1(Client):
     def __init__(self):
         super().__init__()
+
+        # Lookup table
+        self.tt_1 = {} # position evaluation
 
         # Material evaluation
         self.piece_values = {
@@ -96,8 +106,10 @@ class Bot1_1(Client):
 
     def position_evaluation(self):
         board = self.game.board
-
-        # Terminal positions
+        key = board._transposition_key()
+        if key in self.tt_1:
+            return self.tt_1[key]
+        
         if board.is_game_over():
             winner = self.game.get_winner()
             if winner == chess.WHITE:
@@ -106,6 +118,7 @@ class Bot1_1(Client):
                 score = float('-inf')
             else:
                 score = 0
+            self.tt_1[key] = score
             return score
 
         eval_score = 0
@@ -119,19 +132,18 @@ class Bot1_1(Client):
 
             for square in board.pieces(piece_type, chess.BLACK):
                 eval_score -= value + table[square]
-
+                
+        self.tt_1[key] = eval_score
         return eval_score
 
     def minimax(self, depth, alpha, beta, maximizing_player):
         # Terminal condition
         if depth == 0 or self.game.is_game_over():
-            value = self.position_evaluation()
-            return value
+            return self.position_evaluation()
 
         if maximizing_player:
             value = float("-inf")
             for move in self.game.get_possible_moves():
-                # Simulate the move
                 self.game.make_move(move)
                 value = max(value, self.minimax(depth - 1, alpha, beta, False))
                 alpha = max(alpha, value)
@@ -175,7 +187,7 @@ class Bot1_1(Client):
                     best_move = move
 
         end_time = time.time()
-        print(f"Minimax with alpha-beta pruning took {end_time - start_time:.2f} seconds")
+        print(f"Took {end_time - start_time:.2f} seconds")
 
         return best_move, end_time - start_time
 
