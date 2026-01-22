@@ -2,7 +2,7 @@ import time
 from Client.client import Client
 import chess
 from dataclasses import dataclass
-
+from collections import defaultdict
 
 # Changes to position cost
 # Added PeSTO
@@ -238,6 +238,8 @@ class Bot2_1_1(Client):
         self.MAX_KING_DIST = 14  # max Manhattan distance on board
         self.KING_DIST_WEIGHT = 10
 
+        self.killer_moves = defaultdict(lambda: [None, None])
+
     def position_evaluation(self):
         board = self.game.board
         key = board._transposition_key()
@@ -293,14 +295,53 @@ class Bot2_1_1(Client):
         self.tt_1[key] = score
         return score
     
-    def ordered_moves(self, key):
-        moves = list(self.game.board.legal_moves)
-        entry = self.tt_2.get(key)
-        if entry and entry.best_move in moves:
-            moves.remove(entry.best_move)
-            moves.insert(0, entry.best_move)
-        moves.sort(key=lambda m: self.game.board.is_capture(m),reverse=True)
-        return moves
+    def store_killer(self, depth, move):
+        if move is None:
+            return
+        killers = self.killer_moves[depth]
+        if move != killers[0]:
+            killers[1] = killers[0]
+            killers[0] = move
+
+    def ordered_moves(self, key, depth):
+        board = self.game.board
+        tt_entry = self.tt_2.get(key)
+
+        hash_move = tt_entry.best_move if tt_entry else None
+
+        winning_caps = []
+        losing_caps = []
+        killers = []
+        quiet = []
+
+        for move in board.legal_moves:
+            if move == hash_move:
+                continue
+
+            if board.is_capture(move):
+                victim = board.piece_type_at(move.to_square)
+                attacker = board.piece_type_at(move.from_square)
+                if victim and attacker and victim >= attacker:
+                    winning_caps.append(move)
+                else:
+                    losing_caps.append(move)
+
+            elif move in self.killer_moves[depth]:
+                killers.append(move)
+
+            else:
+                quiet.append(move)
+
+        ordered = []
+        if hash_move:
+            ordered.append(hash_move)
+
+        ordered.extend(winning_caps)
+        ordered.extend(killers)
+        ordered.extend(losing_caps)
+        ordered.extend(quiet)
+
+        return ordered
 
     def minimax(self, depth, alpha, beta, maximizing_player):
         board = self.game.board
@@ -328,7 +369,7 @@ class Bot2_1_1(Client):
 
         if maximizing_player:
             value = float("-inf")
-            for move in self.ordered_moves(key):
+            for move in self.ordered_moves(key, depth):
                 self.game.board.push(move)
                 new_value = self.minimax(depth - 1, alpha, beta, False)
                 self.game.board.pop()
@@ -340,10 +381,12 @@ class Bot2_1_1(Client):
                 alpha = max(alpha, value)
 
                 if beta <= alpha:
+                    if not board.is_capture(move):
+                        self.store_killer(depth, move)
                     break 
         else:
             value = float("inf")
-            for move in self.ordered_moves(key):
+            for move in self.ordered_moves(key, depth):
                 self.game.board.push(move)
                 new_value = self.minimax(depth - 1, alpha, beta, True)
                 self.game.board.pop()
@@ -354,6 +397,8 @@ class Bot2_1_1(Client):
 
                 beta = min(beta, value)
                 if beta <= alpha:
+                    if not board.is_capture(move):
+                        self.store_killer(depth, move)
                     break
 
         # Store in TT
@@ -375,7 +420,7 @@ class Bot2_1_1(Client):
 
         if self.game.board.turn == chess.WHITE:
             best_value = float("-inf")
-            for move in self.ordered_moves(key):
+            for move in self.ordered_moves(key, depth):
                 self.game.board.push(move)
                 value = self.minimax(depth - 1, float("-inf"), float("inf"), False)
                 self.game.board.pop()
@@ -384,7 +429,7 @@ class Bot2_1_1(Client):
                     best_move = move
         else:
             best_value = float("inf")
-            for move in self.ordered_moves(key):
+            for move in self.ordered_moves(key, depth):
                 self.game.board.push(move)
                 value = self.minimax(depth - 1, float("-inf"), float("inf"), True)
                 self.game.board.pop()

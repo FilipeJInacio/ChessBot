@@ -17,15 +17,30 @@
 # unidirectional black table, black to evaluate: 56 -> 0
 
 
+import time
 
+def deep_search(board, depth):
+    if depth == 0:
+        return board.legal_moves.count()
 
-
-
-
+    score = 0   
+    for move in board.legal_moves:
+        board.push(move)
+        score += deep_search(board, depth - 1)
+        board.pop()
+    return score
 
 
 import chess
 
+chess_board = chess.Board()
 
-move = chess.Move(from_square=12, to_square=28)
-print(move)
+depth = 4
+
+start_time = time.time()
+nodes = deep_search(chess_board, depth)
+end_time = time.time()
+
+elapsed_time = end_time - start_time
+
+print(f"Depth: {depth}, Nodes: {nodes}, Time: {elapsed_time:.2f} seconds, Nodes/sec: {nodes/elapsed_time:.2f}")
