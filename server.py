@@ -107,7 +107,11 @@ class Server:
                 if self.game.is_game_over():
                     print(f"Game over detected by {self.game.game_over_reason()}")
                     winner = self.game.get_winner()
-                    if winner is None:
+                    if winner == chess.WHITE:
+                        winner = "White"
+                    elif winner == chess.BLACK:
+                        winner = "Black"
+                    elif winner is None:
                         winner = "Draw"
                     for color, identity in self.players.items():
                         socket.send_multipart([identity, b"game_over", winner.encode("utf-8")])

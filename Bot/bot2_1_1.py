@@ -369,7 +369,7 @@ class Bot2_1_1(Client):
         
     def select_move(self):
         start_time = time.time()
-        depth = 5
+        depth = 3
         best_move = None
         key = self.game.board._transposition_key()
 
@@ -394,6 +394,10 @@ class Bot2_1_1(Client):
 
         end_time = time.time()
         print(f"Took {end_time - start_time:.2f} seconds")
+
+        if best_move is None:
+            # select a random move if no best move found
+            best_move = list(self.game.board.legal_moves)[0]
 
         return best_move, end_time - start_time
 

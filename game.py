@@ -57,9 +57,7 @@ class ChessGame:
             return None
 
     def get_winner(self):
-        if self.board.is_checkmate():
-            return 'Black' if self.board.turn == chess.WHITE else 'White'
-        return None
+        return chess.WHITE if self.board.result() == '1-0' else chess.BLACK if self.board.result() == '0-1' else None
 
 
 
