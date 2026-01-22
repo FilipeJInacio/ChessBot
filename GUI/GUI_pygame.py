@@ -149,18 +149,18 @@ class GUI_pygame:
             if state == "playing":
                 if msg_type == b"your_turn":
                     # what was the last move?
-                    last_move_uci = payload.decode("utf-8") if payload else None
+                    last_move = payload.decode("utf-8") if payload else None
 
-                    if last_move_uci:
-                        game.make_move(last_move_uci)
+                    if last_move:
+                        game.make_move(chess.Move.from_uci(last_move))
 
                     self.move_event.wait()
-                    move_uci = self.selected_move
+                    move = self.selected_move
                     self.move_event.clear()
 
-                    game.make_move(move_uci)
+                    game.make_move(move)
 
-                    self.dealer.send_multipart([b"move", move_uci.encode("utf-8")])
+                    self.dealer.send_multipart([b"move", move.uci().encode("utf-8")])
 
                     state = "waiting_for_move_ack"
                 continue
@@ -285,7 +285,7 @@ class GUI_pygame:
 
                     with self.state_lock:
                         if move in self.game.board.legal_moves:
-                            self.selected_move = move.uci()
+                            self.selected_move = move
                             self.move_event.set()
 
                     dragging = False

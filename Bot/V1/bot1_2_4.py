@@ -200,7 +200,7 @@ class Bot1_2_4(Client):
         
     def select_move(self):
         start_time = time.time()
-        depth = 5
+        depth = 3
         best_move = None
         key = self.game.board._transposition_key()
         best_value = float("-inf")
