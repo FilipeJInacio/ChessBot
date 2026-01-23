@@ -10,6 +10,7 @@
 
 import chess
 
-chess_board = chess.Board()
+board = chess.Board()
+board.push_san("e4")
 
-
+print(len(board.pieces(chess.KNIGHT, chess.WHITE)))

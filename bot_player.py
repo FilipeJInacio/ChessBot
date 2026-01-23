@@ -7,10 +7,11 @@ from Bot.V1.bot1_1_4 import Bot1_1_4
 from Bot.V1.bot1_2 import Bot1_2
 from Bot.V1.bot1_2_4 import Bot1_2_4
 from Bot.bot2_1_1 import Bot2_1_1
+from Bot.bot3_1 import Bot3_1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Choose Bot type")
-    parser.add_argument('--b', choices=['1.1.0', '1.1.1', '1.1.2', '1.1.3', '1.1.4', '1.2', '1.2.4', '2.1.1'], default='2.1.1', help='Type of bot to use')
+    parser.add_argument('--b', choices=['1.1.0', '1.1.1', '1.1.2', '1.1.3', '1.1.4', '1.2', '1.2.4', '2.1.1','3.1'], default='2.1.1', help='Type of bot to use')
     args = parser.parse_args()  
     if args.b == '1.1.0':
         client = Bot1_1_0()
@@ -35,4 +36,7 @@ if __name__ == "__main__":
         client.run()
     elif args.b == '2.1.1':
         client = Bot2_1_1()
+        client.run()
+    elif args.b == '3.1':
+        client = Bot3_1()
         client.run()

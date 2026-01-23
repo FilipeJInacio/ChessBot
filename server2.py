@@ -1,3 +1,4 @@
+import csv
 import time
 import zmq
 import time
@@ -50,28 +51,12 @@ class Server:
             print("Publisher stopped")
 
     def dataset_append(self):
-        # φ(s) = [
-        #     material_counts,              // length 5
-        #     pawn_square_counts,            // length 64
-        #     knight_square_counts,          // length 64
-        #     bishop_square_counts,          // length 64
-        #     rook_square_counts,            // length 64
-        #     queen_square_counts,           // length 64
-        #     king_square_counts,            // length 64
-        #     tempo,                         // length 1
-        #     pawn_structure_features,       // length 2
-        #     enemy_pawn_structure_features, // length 2
-        #     king_distance                  // length 1
-        #     piece importance to phase      // length 10
-        # ]
-
         list_of_pawns = [0]*64
         list_of_knights = [0]*64
         list_of_bishops = [0]*64
         list_of_rooks = [0]*64
         list_of_queens = [0]*64
         list_of_kings = [0]*64
-
 
         for square in self.game.board.pieces(chess.PAWN, chess.WHITE):
             list_of_pawns[square^56] += 1/8
@@ -98,12 +83,44 @@ class Server:
         for square in self.game.board.pieces(chess.QUEEN, chess.BLACK):
             list_of_queens[square] -= 1
 
-        for square in self.game.board.pieces(chess.KING, chess.WHITE): # NERF KING IMPORTANCE
-            list_of_kings[square^56] += 1*0.2
+        for square in self.game.board.pieces(chess.KING, chess.WHITE): 
+            list_of_kings[square^56] += 1
         for square in self.game.board.pieces(chess.KING, chess.BLACK):
-            list_of_kings[square] -= 1*0.2
+            list_of_kings[square] -= 1
         
-        list_of_side_to_move = ([1] if self.game.board.turn == chess.WHITE else [-1])*0.05
+
+        list_of_mobility_per_piece = []
+        temp = []
+        turn = self.game.board.turn  # save the current turn
+
+        self.game.board.turn = chess.WHITE
+        legal_moves = list(self.game.board.legal_moves)
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.PAWN, chess.WHITE)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.KNIGHT, chess.WHITE)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.BISHOP, chess.WHITE)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.ROOK, chess.WHITE)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.QUEEN, chess.WHITE)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.KING, chess.WHITE)))
+
+        self.game.board.turn = chess.BLACK
+        legal_moves = list(self.game.board.legal_moves)
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.PAWN, chess.BLACK)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.KNIGHT, chess.BLACK)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.BISHOP, chess.BLACK)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.ROOK, chess.BLACK)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.QUEEN, chess.BLACK)))
+        temp.append(sum(1 for move in legal_moves if move.from_square in self.game.board.pieces(chess.KING, chess.BLACK)))
+        self.game.board.turn = turn  # restore the original turn
+
+        list_of_mobility_per_piece.append((temp[0] - temp[6])/(8*4)) # 8 is max pawns, 4 moves each      
+        list_of_mobility_per_piece.append((temp[1] - temp[7])/(2*8)) # 2 is max knights, 8 moves each
+        list_of_mobility_per_piece.append((temp[2] - temp[8])/(2*13)) # 2 is max bishops, 13 moves each
+        list_of_mobility_per_piece.append((temp[3] - temp[9])/(2*14)) # 2 is max rooks, 14 moves each
+        list_of_mobility_per_piece.append((temp[4] - temp[10])/(27))  # 1 is max queens, 27 moves each
+        list_of_mobility_per_piece.append((temp[5] - temp[11])/(1*8)) # 1 is max kings, 8 moves each
+
+
+        list_of_side_to_move = ([1] if self.game.board.turn == chess.WHITE else [-1])
 
         # count passing pawns
         passing_pawns_white = 0
@@ -149,12 +166,7 @@ class Server:
                 stacked_pawns_black += count_black
         list_of_pawns_features = [(passing_pawns_white - passing_pawns_black)/8, (stacked_pawns_white - stacked_pawns_black)/8]
 
-        list_piece_importance = [len(self.game.board.pieces(chess.PAWN, chess.WHITE)) + len(self.game.board.pieces(chess.PAWN, chess.BLACK)),
-                                 len(self.game.board.pieces(chess.KNIGHT, chess.WHITE)) + len(self.game.board.pieces(chess.KNIGHT, chess.BLACK)),
-                                 len(self.game.board.pieces(chess.BISHOP, chess.WHITE)) + len(self.game.board.pieces(chess.BISHOP, chess.BLACK)),
-                                 len(self.game.board.pieces(chess.ROOK, chess.WHITE)) + len(self.game.board.pieces(chess.ROOK, chess.BLACK)),
-                                 len(self.game.board.pieces(chess.QUEEN, chess.WHITE)) + len(self.game.board.pieces(chess.QUEEN, chess.BLACK)),
-                                 0,0,0,0,0] # filler for 10 length
+        phase = len(self.game.board.pieces(chess.KNIGHT, chess.WHITE)) + len(self.game.board.pieces(chess.KNIGHT, chess.BLACK)) + len(self.game.board.pieces(chess.BISHOP, chess.WHITE)) + len(self.game.board.pieces(chess.BISHOP, chess.BLACK)) + 2*(len(self.game.board.pieces(chess.ROOK, chess.WHITE)) + len(self.game.board.pieces(chess.ROOK, chess.BLACK))) + 4*(len(self.game.board.pieces(chess.QUEEN, chess.WHITE)) + len(self.game.board.pieces(chess.QUEEN, chess.BLACK)))
 
         # hamilton distance
         white_king_square = list(self.game.board.pieces(chess.KING, chess.WHITE))[0]
@@ -163,25 +175,37 @@ class Server:
         white_king_rank = chess.square_rank(white_king_square)
         black_king_file = chess.square_file(black_king_square)
         black_king_rank = chess.square_rank(black_king_square)
-        king_distance = (14 - (abs(white_king_file - black_king_file) + abs(white_king_rank - black_king_rank)))/14
+        king_distance = 1 - 2*(14 - (abs(white_king_file - black_king_file) + abs(white_king_rank - black_king_rank)))/14
 
-        self.dataset.extend([(self.game.board.pawns(chess.WHITE).count() - self.game.board.pawns(chess.BLACK).count())/8, 
-                             (self.game.board.knights(chess.WHITE).count() - self.game.board.knights(chess.BLACK).count())/2,
-                             (self.game.board.bishops(chess.WHITE).count() - self.game.board.bishops(chess.BLACK).count())/2,
-                             (self.game.board.rooks(chess.WHITE).count() - self.game.board.rooks(chess.BLACK).count())/2,
-                             (self.game.board.queens(chess.WHITE).count() - self.game.board.queens(chess.BLACK).count())])
-        self.dataset.extend(list_of_pawns)
-        self.dataset.extend(list_of_knights)
-        self.dataset.extend(list_of_bishops)
-        self.dataset.extend(list_of_rooks)
-        self.dataset.extend(list_of_queens)
-        self.dataset.extend(list_of_kings)
-        self.dataset.extend(list_of_side_to_move)
-        self.dataset.extend(list_of_pawns_features)
-        self.dataset.append(king_distance*0.1)
+        # game result
+        if self.game.is_game_over():
+            result = self.game.get_winner()
+            if result == chess.WHITE:
+                result = 1
+            elif result == chess.BLACK:
+                result = -1
+            else:
+                result = 0
+        else:
+            result = 0
 
-
-
+        self.dataset.append([(len(self.game.board.pieces(chess.PAWN, chess.WHITE)) - len(self.game.board.pieces(chess.PAWN, chess.BLACK)))/8, 
+                             (len(self.game.board.pieces(chess.KNIGHT, chess.WHITE)) - len(self.game.board.pieces(chess.KNIGHT, chess.BLACK)))/2,
+                             (len(self.game.board.pieces(chess.BISHOP, chess.WHITE)) - len(self.game.board.pieces(chess.BISHOP, chess.BLACK)))/2,
+                             (len(self.game.board.pieces(chess.ROOK, chess.WHITE)) - len(self.game.board.pieces(chess.ROOK, chess.BLACK)))/2,
+                             (len(self.game.board.pieces(chess.QUEEN, chess.WHITE)) - len(self.game.board.pieces(chess.QUEEN, chess.BLACK)))/2]) # material count 5
+        self.dataset[-1].extend(list_of_pawns)   # positional counts 64
+        self.dataset[-1].extend(list_of_knights) # positional counts 64
+        self.dataset[-1].extend(list_of_bishops) # positional counts 64
+        self.dataset[-1].extend(list_of_rooks)   # positional counts 64
+        self.dataset[-1].extend(list_of_queens)  # positional counts 64
+        self.dataset[-1].extend(list_of_kings)   # positional counts 64, 0.2
+        self.dataset[-1].extend(list_of_mobility_per_piece) # mobility per piece 6 , 0.1
+        self.dataset[-1].extend(list_of_side_to_move)   # tempo, 0.05
+        self.dataset[-1].extend(list_of_pawns_features) # pass pawns and stacked pawns
+        self.dataset[-1].append(king_distance) # 0.1
+        self.dataset[-1].append(phase)
+        self.dataset[-1].append(result) # game result 0 if undefined or draw, 1 if white win, -1 if black win
 
     def _router(self):
         state = "waiting_for_players"
@@ -189,7 +213,7 @@ class Server:
         socket.setsockopt(zmq.RCVTIMEO, 200)
         socket.bind(f"tcp://*:{self.router_port}")
 
-        #self.dataset_append()
+        self.dataset_append()
 
         while self.running:
             try:
@@ -234,7 +258,7 @@ class Server:
                         state = "active_game"
                     else:
                         socket.send_multipart([identity, b"move_nack", b""])
-
+                    self.dataset_append()
 
                 else:
                     print("Unexpected Message")
@@ -256,6 +280,10 @@ class Server:
                     state = "waiting_for_players"
                     self.turn_counter = 0
                     self.players = {}
+                    with open("game_data.csv", "a", newline="") as f:
+                        writer = csv.writer(f)
+                        for each in self.dataset:
+                            writer.writerow(each)
                     print("Game over announced, waiting for new players")
                     continue
                 self.turn_counter += 1
