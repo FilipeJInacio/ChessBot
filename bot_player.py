@@ -6,8 +6,8 @@ from Bot.V1.bot1_1_3 import Bot1_1_3
 from Bot.V1.bot1_1_4 import Bot1_1_4
 from Bot.V1.bot1_2 import Bot1_2
 from Bot.V1.bot1_2_4 import Bot1_2_4
-from Bot.bot2_1_1 import Bot2_1_1
-from Bot.bot3_1 import Bot3_1
+from Bot.V2.bot2_1_1 import Bot2_1_1
+from Bot.V3.bot3_1 import Bot3_1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Choose Bot type")
